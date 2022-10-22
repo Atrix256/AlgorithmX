@@ -3,6 +3,22 @@
 // I didn't do things quite as bare metal efficient as Knuth, so check out his code if you want to squeeze out a little more perf!
 
 #include <vector>
+#include <algorithm>
+#include <random>
+#include <unordered_set>
+
+#define DETERMINISTIC() true
+
+std::mt19937& GetRNG()
+{
+    #if DETERMINISTIC()
+    static std::mt19937 rng;
+    #else
+    static std::random_device rd;
+    static std::mt19937 rng(rd());
+    #endif
+    return rng;
+}
 
 // An item is something to be covered
 struct Item
@@ -158,16 +174,105 @@ public:
         SetOptionPointers();
         CountItemOptions();
 
-        // TODO: this!
-        int ijkl = 0;
+        // Solve!
+        SolveInternal();
     }
 
+private:
     std::vector<Item> m_items;
     std::vector<Node> m_nodes;
     int m_firstOptionalItem = -1;
     bool m_error = false;
+    std::unordered_set<int> m_solutionOptionNodeIndices;
 
- private:
+    void SolveInternal()
+    {
+         // We want to try choosing options for the columns with the lowest counts first.
+         // So, let's get the list of item counts and sort by count.
+         struct ItemCount
+         {
+             int itemIndex;
+             int optionCount;
+         };
+         std::vector<ItemCount> itemCounts;
+         {
+             bool foundRequiredColumn = false;
+             int itemIndex = 0;
+             while (m_items[itemIndex].rightItemIndex != 0)
+             {
+                 itemIndex = m_items[itemIndex].rightItemIndex;
+                 itemCounts.push_back({ itemIndex, m_items[itemIndex].optionCount });
+                 foundRequiredColumn = foundRequiredColumn || itemIndex < m_firstOptionalItem;
+             }
+             if (!foundRequiredColumn)
+             {
+                 // TODO: print out solution! It's all the removed options
+                 printf("Found a solution!\n");
+                 for (int optionIndex : m_solutionOptionNodeIndices)
+                     printf("%i\n", optionIndex);
+                 return;
+             }
+             std::sort(itemCounts.begin(), itemCounts.end(), [](const ItemCount& A, const ItemCount& B) { return A.optionCount < B.optionCount; });
+         }
+
+         // TODO: i think we only have to try the first item here? If so don't need to gather and sort. Just keep lowest one.
+         std::vector<int> optionNodeIndices;
+         for (int itemCountIndex = 0; itemCountIndex < itemCounts.size(); ++itemCountIndex)
+         {
+             int chosenItemIndex = itemCounts[itemCountIndex].itemIndex;
+
+             // gather up all the options that cover this item
+             optionNodeIndices.clear();
+             int nodeIndex = chosenItemIndex - 1;
+             while (m_nodes[nodeIndex].downNodeIndex != chosenItemIndex - 1)
+             {
+                 nodeIndex = m_nodes[nodeIndex].downNodeIndex;
+
+                 int optionNodeIndex = nodeIndex;
+                 while (m_nodes[optionNodeIndex].itemIndex != -1)
+                     optionNodeIndex--;
+
+                 optionNodeIndices.push_back(optionNodeIndex);
+             }
+
+             // Remove item
+             m_items[m_items[chosenItemIndex].leftItemIndex].rightItemIndex = m_items[chosenItemIndex].rightItemIndex;
+             m_items[m_items[chosenItemIndex].rightItemIndex].leftItemIndex = m_items[chosenItemIndex].leftItemIndex;
+
+             // Try removing each option and recursing.
+             // Try in a random order.
+             std::mt19937& rng = GetRNG();
+             std::shuffle(optionNodeIndices.begin(), optionNodeIndices.end(), rng);
+             for (int optionIndex : optionNodeIndices)
+             {
+                 // Remove option
+                 m_solutionOptionNodeIndices.insert(optionIndex);
+                 m_nodes[m_nodes[optionIndex].upNodeIndex].downNodeIndex = m_nodes[optionIndex].downNodeIndex;
+                 m_nodes[m_nodes[optionIndex].downNodeIndex].upNodeIndex = m_nodes[optionIndex].upNodeIndex;
+
+                 // TODO: remove options which have items that this option also has
+
+                 // Recurse
+                 SolveInternal();
+
+                 // TODO: restore options which have items that this option also has
+
+                 // Restore option
+                 m_solutionOptionNodeIndices.erase(optionIndex);
+                 m_nodes[m_nodes[optionIndex].upNodeIndex].downNodeIndex = optionIndex;
+                 m_nodes[m_nodes[optionIndex].downNodeIndex].upNodeIndex = optionIndex;
+             }
+
+             // Restore item
+             m_items[m_items[chosenItemIndex].leftItemIndex].rightItemIndex = chosenItemIndex;
+             m_items[m_items[chosenItemIndex].rightItemIndex].leftItemIndex = chosenItemIndex;
+         }
+
+         // TODO: keep track of how many things we have tried, and how many things there are to try total and report a percentage!
+         // TODO: can this be multi threaded at all? I don't think so...
+         // TODO: look at knuth's code. You have a lot of temporary storage!
+    }
+
      void CountItemOptions()
      {
          for (int itemIndex = 1; itemIndex < m_items.size(); ++itemIndex)
@@ -236,11 +341,9 @@ Unique solution =  A D and E F C and B G
 }
 
 /*
-TODO:
-- rename to options and items
-- support primary and secondary.  primary must be filled. secondary are optional to be filled but can only be filled once.
-
 REFS:
 * https://www-cs-faculty.stanford.edu/~knuth/programs.html
 * https://www.youtube.com/watch?v=_cR9zDlvP88
+* https://en.wikipedia.org/wiki/Knuth%27s_Algorithm_X
+* https://en.wikipedia.org/wiki/Dancing_Links
 */
