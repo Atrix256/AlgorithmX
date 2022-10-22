@@ -1,7 +1,8 @@
-#include <vector>
-
 // Note: indices are used instead of pointers because they don't invalidate when dynamic arrays resize.
 // Knuth also notes that you can use types that are smaller than a pointer type when they are indices.
+// I didn't do things quite as bare metal efficient as Knuth, so check out his code if you want to squeeze out a little more perf!
+
+#include <vector>
 
 // An item is something to be covered
 struct Item
@@ -9,6 +10,7 @@ struct Item
     char name[8];
     int leftItemIndex = -1;
     int rightItemIndex = -1;
+    int optionCount = -1;
 };
 
 // An option is a sequential list of nodes.
@@ -20,12 +22,9 @@ struct Node
     int itemIndex = -1; // What item it belongs to
 };
 
-struct Solver
+class Solver
 {
-    std::vector<Item> m_items;
-    std::vector<Node> m_nodes;
-    int m_firstOptionalItem = -1;
-    bool m_error = false;
+public:
 
     // Comma seperated list
     static Solver AddItems(const char* itemNames, int firstOptionalItem = -1)
@@ -88,7 +87,7 @@ struct Solver
     // Comma seperated list
     Solver& AddOption(const char* items)
     {
-        if (!items || !items[0])
+        if (m_error || !items || !items[0])
             return *this;
 
         // Add a spacer node
@@ -97,10 +96,7 @@ struct Solver
             m_nodes.resize(m_nodes.size() + 1);
             Node& newNode = m_nodes[newNodeIndex];
             newNode.itemIndex = -1;
-            // TODO: set the up and down to be the last and next option, respectively.
         }
-
-        // TODO: doesn't every option need an extra node between it?
 
         // Add the nodes for this option
         const char* start = items;
@@ -136,7 +132,7 @@ struct Solver
 
             if (!foundItem)
             {
-                printf("Could not find item in option");
+                printf("Could not find item in option\n");
                 m_error = true;
                 return *this;
             }
@@ -153,10 +149,64 @@ struct Solver
     void Solve()
     {
         if (m_error)
+        {
+            printf("There was an error, not running solver.\n");
             return;
+        }
+
+        // Do some setup work to make solving faster and easier
+        SetOptionPointers();
+        CountItemOptions();
 
         // TODO: this!
+        int ijkl = 0;
     }
+
+    std::vector<Item> m_items;
+    std::vector<Node> m_nodes;
+    int m_firstOptionalItem = -1;
+    bool m_error = false;
+
+ private:
+     void CountItemOptions()
+     {
+         for (int itemIndex = 1; itemIndex < m_items.size(); ++itemIndex)
+         {
+             Item& item = m_items[itemIndex];
+             item.optionCount = 0;
+             Node* itemNode = &m_nodes[itemIndex - 1];
+             while (itemNode->downNodeIndex != itemIndex - 1)
+             {
+                 itemNode = &m_nodes[itemNode->downNodeIndex];
+                 item.optionCount++;
+             }
+         }
+     }
+
+     void SetOptionPointers()
+     {
+         int lastOptionNodeIndex = int(m_items.size() - 1);
+         int nextOptionNodeIndex = lastOptionNodeIndex + 1;
+
+         while (true)
+         {
+             while (nextOptionNodeIndex < m_nodes.size() && m_nodes[nextOptionNodeIndex].itemIndex != -1)
+                 nextOptionNodeIndex++;
+
+             if (nextOptionNodeIndex == m_nodes.size())
+                 break;
+
+             m_nodes[lastOptionNodeIndex].downNodeIndex = nextOptionNodeIndex;
+             m_nodes[nextOptionNodeIndex].upNodeIndex = lastOptionNodeIndex;
+
+             lastOptionNodeIndex = nextOptionNodeIndex;
+             nextOptionNodeIndex++;
+         }
+
+         // Fix up the links of the first and last option to point to each other
+         m_nodes[lastOptionNodeIndex].downNodeIndex = int(m_items.size() - 1);
+         m_nodes[m_items.size() - 1].upNodeIndex = lastOptionNodeIndex;
+     }
 };
 
 int main(int argc, char** argv)
