@@ -11,12 +11,12 @@
 
 std::mt19937& GetRNG()
 {
-    #if DETERMINISTIC()
+#if DETERMINISTIC()
     static std::mt19937 rng;
-    #else
+#else
     static std::random_device rd;
     static std::mt19937 rng(rd());
-    #endif
+#endif
     return rng;
 }
 
@@ -131,7 +131,7 @@ public:
                     // Make a new node
                     foundItem = true;
                     int newNodeIndex = (int)m_nodes.size();
-                    m_nodes.resize(m_nodes.size()+1);
+                    m_nodes.resize(m_nodes.size() + 1);
                     Node& newNode = m_nodes[newNodeIndex];
                     newNode.itemIndex = itemIndex;
 
@@ -187,131 +187,131 @@ private:
 
     void SolveInternal()
     {
-         // We want to try choosing options for the columns with the lowest counts first.
-         // So, let's get the list of item counts and sort by count.
-         struct ItemCount
-         {
-             int itemIndex;
-             int optionCount;
-         };
-         std::vector<ItemCount> itemCounts;
-         {
-             bool foundRequiredColumn = false;
-             int itemIndex = 0;
-             while (m_items[itemIndex].rightItemIndex != 0)
-             {
-                 itemIndex = m_items[itemIndex].rightItemIndex;
-                 itemCounts.push_back({ itemIndex, m_items[itemIndex].optionCount });
-                 foundRequiredColumn = foundRequiredColumn || itemIndex < m_firstOptionalItem;
-             }
-             if (!foundRequiredColumn)
-             {
-                 // TODO: print out solution! It's all the removed options
-                 printf("Found a solution!\n");
-                 for (int optionIndex : m_solutionOptionNodeIndices)
-                     printf("%i\n", optionIndex);
-                 return;
-             }
-             std::sort(itemCounts.begin(), itemCounts.end(), [](const ItemCount& A, const ItemCount& B) { return A.optionCount < B.optionCount; });
-         }
+        // We want to try choosing options for the columns with the lowest counts first.
+        // So, let's get the list of item counts and sort by count.
+        struct ItemCount
+        {
+            int itemIndex;
+            int optionCount;
+        };
+        std::vector<ItemCount> itemCounts;
+        {
+            bool foundRequiredColumn = false;
+            int itemIndex = 0;
+            while (m_items[itemIndex].rightItemIndex != 0)
+            {
+                itemIndex = m_items[itemIndex].rightItemIndex;
+                itemCounts.push_back({ itemIndex, m_items[itemIndex].optionCount });
+                foundRequiredColumn = foundRequiredColumn || itemIndex < m_firstOptionalItem;
+            }
+            if (!foundRequiredColumn)
+            {
+                // TODO: print out solution! It's all the removed options
+                printf("Found a solution!\n");
+                for (int optionIndex : m_solutionOptionNodeIndices)
+                    printf("%i\n", optionIndex);
+                return;
+            }
+            std::sort(itemCounts.begin(), itemCounts.end(), [](const ItemCount& A, const ItemCount& B) { return A.optionCount < B.optionCount; });
+        }
 
-         // TODO: i think we only have to try the first item here? If so don't need to gather and sort. Just keep lowest one.
-         std::vector<int> optionNodeIndices;
-         for (int itemCountIndex = 0; itemCountIndex < itemCounts.size(); ++itemCountIndex)
-         {
-             int chosenItemIndex = itemCounts[itemCountIndex].itemIndex;
+        // TODO: i think we only have to try the first item here? If so don't need to gather and sort. Just keep lowest one.
+        std::vector<int> optionNodeIndices;
+        for (int itemCountIndex = 0; itemCountIndex < itemCounts.size(); ++itemCountIndex)
+        {
+            int chosenItemIndex = itemCounts[itemCountIndex].itemIndex;
 
-             // gather up all the options that cover this item
-             optionNodeIndices.clear();
-             int nodeIndex = chosenItemIndex - 1;
-             while (m_nodes[nodeIndex].downNodeIndex != chosenItemIndex - 1)
-             {
-                 nodeIndex = m_nodes[nodeIndex].downNodeIndex;
+            // gather up all the options that cover this item
+            optionNodeIndices.clear();
+            int nodeIndex = chosenItemIndex - 1;
+            while (m_nodes[nodeIndex].downNodeIndex != chosenItemIndex - 1)
+            {
+                nodeIndex = m_nodes[nodeIndex].downNodeIndex;
 
-                 int optionNodeIndex = nodeIndex;
-                 while (m_nodes[optionNodeIndex].itemIndex != -1)
-                     optionNodeIndex--;
+                int optionNodeIndex = nodeIndex;
+                while (m_nodes[optionNodeIndex].itemIndex != -1)
+                    optionNodeIndex--;
 
-                 optionNodeIndices.push_back(optionNodeIndex);
-             }
+                optionNodeIndices.push_back(optionNodeIndex);
+            }
 
-             // Remove item
-             m_items[m_items[chosenItemIndex].leftItemIndex].rightItemIndex = m_items[chosenItemIndex].rightItemIndex;
-             m_items[m_items[chosenItemIndex].rightItemIndex].leftItemIndex = m_items[chosenItemIndex].leftItemIndex;
+            // Remove item
+            m_items[m_items[chosenItemIndex].leftItemIndex].rightItemIndex = m_items[chosenItemIndex].rightItemIndex;
+            m_items[m_items[chosenItemIndex].rightItemIndex].leftItemIndex = m_items[chosenItemIndex].leftItemIndex;
 
-             // Try removing each option and recursing.
-             // Try in a random order.
-             std::mt19937& rng = GetRNG();
-             std::shuffle(optionNodeIndices.begin(), optionNodeIndices.end(), rng);
-             for (int optionIndex : optionNodeIndices)
-             {
-                 // Remove option
-                 m_solutionOptionNodeIndices.insert(optionIndex);
-                 m_nodes[m_nodes[optionIndex].upNodeIndex].downNodeIndex = m_nodes[optionIndex].downNodeIndex;
-                 m_nodes[m_nodes[optionIndex].downNodeIndex].upNodeIndex = m_nodes[optionIndex].upNodeIndex;
+            // Try removing each option and recursing.
+            // Try in a random order.
+            std::mt19937& rng = GetRNG();
+            std::shuffle(optionNodeIndices.begin(), optionNodeIndices.end(), rng);
+            for (int optionIndex : optionNodeIndices)
+            {
+                // Remove option
+                m_solutionOptionNodeIndices.insert(optionIndex);
+                m_nodes[m_nodes[optionIndex].upNodeIndex].downNodeIndex = m_nodes[optionIndex].downNodeIndex;
+                m_nodes[m_nodes[optionIndex].downNodeIndex].upNodeIndex = m_nodes[optionIndex].upNodeIndex;
 
-                 // TODO: remove options which have items that this option also has
+                // TODO: remove options which have items that this option also has
 
-                 // Recurse
-                 SolveInternal();
+                // Recurse
+                SolveInternal();
 
-                 // TODO: restore options which have items that this option also has
+                // TODO: restore options which have items that this option also has
 
-                 // Restore option
-                 m_solutionOptionNodeIndices.erase(optionIndex);
-                 m_nodes[m_nodes[optionIndex].upNodeIndex].downNodeIndex = optionIndex;
-                 m_nodes[m_nodes[optionIndex].downNodeIndex].upNodeIndex = optionIndex;
-             }
+                // Restore option
+                m_solutionOptionNodeIndices.erase(optionIndex);
+                m_nodes[m_nodes[optionIndex].upNodeIndex].downNodeIndex = optionIndex;
+                m_nodes[m_nodes[optionIndex].downNodeIndex].upNodeIndex = optionIndex;
+            }
 
-             // Restore item
-             m_items[m_items[chosenItemIndex].leftItemIndex].rightItemIndex = chosenItemIndex;
-             m_items[m_items[chosenItemIndex].rightItemIndex].leftItemIndex = chosenItemIndex;
-         }
+            // Restore item
+            m_items[m_items[chosenItemIndex].leftItemIndex].rightItemIndex = chosenItemIndex;
+            m_items[m_items[chosenItemIndex].rightItemIndex].leftItemIndex = chosenItemIndex;
+        }
 
-         // TODO: keep track of how many things we have tried, and how many things there are to try total and report a percentage!
-         // TODO: can this be multi threaded at all? I don't think so...
-         // TODO: look at knuth's code. You have a lot of temporary storage!
+        // TODO: keep track of how many things we have tried, and how many things there are to try total and report a percentage!
+        // TODO: can this be multi threaded at all? I don't think so...
+        // TODO: look at knuth's code. You have a lot of temporary storage!
     }
 
-     void CountItemOptions()
-     {
-         for (int itemIndex = 1; itemIndex < m_items.size(); ++itemIndex)
-         {
-             Item& item = m_items[itemIndex];
-             item.optionCount = 0;
-             Node* itemNode = &m_nodes[itemIndex - 1];
-             while (itemNode->downNodeIndex != itemIndex - 1)
-             {
-                 itemNode = &m_nodes[itemNode->downNodeIndex];
-                 item.optionCount++;
-             }
-         }
-     }
+    void CountItemOptions()
+    {
+        for (int itemIndex = 1; itemIndex < m_items.size(); ++itemIndex)
+        {
+            Item& item = m_items[itemIndex];
+            item.optionCount = 0;
+            Node* itemNode = &m_nodes[itemIndex - 1];
+            while (itemNode->downNodeIndex != itemIndex - 1)
+            {
+                itemNode = &m_nodes[itemNode->downNodeIndex];
+                item.optionCount++;
+            }
+        }
+    }
 
-     void SetOptionPointers()
-     {
-         int lastOptionNodeIndex = int(m_items.size() - 1);
-         int nextOptionNodeIndex = lastOptionNodeIndex + 1;
+    void SetOptionPointers()
+    {
+        int lastOptionNodeIndex = int(m_items.size() - 1);
+        int nextOptionNodeIndex = lastOptionNodeIndex + 1;
 
-         while (true)
-         {
-             while (nextOptionNodeIndex < m_nodes.size() && m_nodes[nextOptionNodeIndex].itemIndex != -1)
-                 nextOptionNodeIndex++;
+        while (true)
+        {
+            while (nextOptionNodeIndex < m_nodes.size() && m_nodes[nextOptionNodeIndex].itemIndex != -1)
+                nextOptionNodeIndex++;
 
-             if (nextOptionNodeIndex == m_nodes.size())
-                 break;
+            if (nextOptionNodeIndex == m_nodes.size())
+                break;
 
-             m_nodes[lastOptionNodeIndex].downNodeIndex = nextOptionNodeIndex;
-             m_nodes[nextOptionNodeIndex].upNodeIndex = lastOptionNodeIndex;
+            m_nodes[lastOptionNodeIndex].downNodeIndex = nextOptionNodeIndex;
+            m_nodes[nextOptionNodeIndex].upNodeIndex = lastOptionNodeIndex;
 
-             lastOptionNodeIndex = nextOptionNodeIndex;
-             nextOptionNodeIndex++;
-         }
+            lastOptionNodeIndex = nextOptionNodeIndex;
+            nextOptionNodeIndex++;
+        }
 
-         // Fix up the links of the first and last option to point to each other
-         m_nodes[lastOptionNodeIndex].downNodeIndex = int(m_items.size() - 1);
-         m_nodes[m_items.size() - 1].upNodeIndex = lastOptionNodeIndex;
-     }
+        // Fix up the links of the first and last option to point to each other
+        m_nodes[lastOptionNodeIndex].downNodeIndex = int(m_items.size() - 1);
+        m_nodes[m_items.size() - 1].upNodeIndex = lastOptionNodeIndex;
+    }
 };
 
 int main(int argc, char** argv)
