@@ -4,21 +4,8 @@
 
 #include <vector>
 #include <algorithm>
-#include <random>
-#include <unordered_set>
 
 #define DETERMINISTIC() true
-
-std::mt19937& GetRNG()
-{
-#if DETERMINISTIC()
-    static std::mt19937 rng;
-#else
-    static std::random_device rd;
-    static std::mt19937 rng(rd());
-#endif
-    return rng;
-}
 
 // An item is something to be covered
 struct Item
@@ -183,43 +170,91 @@ private:
     std::vector<Node> m_nodes;
     int m_firstOptionalItem = -1;
     bool m_error = false;
-    std::unordered_set<int> m_solutionOptionNodeIndices;
+    std::vector<int> m_solutionOptionNodeIndices;
+
+    // TODO: maybe have root item node not be in the list? makes off by 1 troubles. could also maybe it be at the end instead.
+
+    void CoverItem(int itemIndex)
+    {
+
+    }
 
     void SolveInternal()
     {
-        // We want to try choosing options for the columns with the lowest counts first.
-        // So, let's get the list of item counts and sort by count.
-        struct ItemCount
-        {
-            int itemIndex;
-            int optionCount;
-        };
-        std::vector<ItemCount> itemCounts;
+        // Find the item with the fewest choices as the item to cover next.
+        // We are searching exhaustively, so it doesn't really matter how we are choosing the item
+        // to fill next, since any choice will be exhaustive, but this heuristic often finds solutions
+        // faster apparently.
+        int chosenItemIndex = 0;
         {
             bool foundRequiredColumn = false;
+            int bestItemIndex = -1;
+            int bestItemCount = 0;
+
             int itemIndex = 0;
+
             while (m_items[itemIndex].rightItemIndex != 0)
             {
                 itemIndex = m_items[itemIndex].rightItemIndex;
-                itemCounts.push_back({ itemIndex, m_items[itemIndex].optionCount });
+                if (bestItemIndex == -1 || m_items[itemIndex].optionCount < bestItemCount)
+                {
+                    bestItemIndex = itemIndex;
+                    bestItemCount = m_items[itemIndex].optionCount;
+                }
                 foundRequiredColumn = foundRequiredColumn || itemIndex < m_firstOptionalItem;
             }
             if (!foundRequiredColumn)
             {
-                // TODO: print out solution! It's all the removed options
                 printf("Found a solution!\n");
                 for (int optionIndex : m_solutionOptionNodeIndices)
-                    printf("%i\n", optionIndex);
+                {
+                    optionIndex++;
+                    while (optionIndex < m_nodes.size() && m_nodes[optionIndex].itemIndex != -1)
+                    {
+                        printf("%s ", m_items[m_nodes[optionIndex].itemIndex].name);
+                        optionIndex++;
+                    }
+                    printf("\n");
+                }
                 return;
             }
-            std::sort(itemCounts.begin(), itemCounts.end(), [](const ItemCount& A, const ItemCount& B) { return A.optionCount < B.optionCount; });
+
+            chosenItemIndex = bestItemIndex;
         }
 
-        // TODO: i think we only have to try the first item here? If so don't need to gather and sort. Just keep lowest one.
-        std::vector<int> optionNodeIndices;
-        for (int itemCountIndex = 0; itemCountIndex < itemCounts.size(); ++itemCountIndex)
+        // Try selection each option that covers this item, one at a time.
+        // If planning to terminate on the first solution found instead of finding
+        // all solutions, they say it's better to randomize the order of options
+        // tried, but we'll just do them in order.
         {
-            int chosenItemIndex = itemCounts[itemCountIndex].itemIndex;
+            int itemNodeIndex = chosenItemIndex - 1;
+            int optionNodeIndex = itemNodeIndex;
+            while (m_nodes[optionNodeIndex].downNodeIndex != itemNodeIndex)
+            {
+                optionNodeIndex = m_nodes[optionNodeIndex].downNodeIndex;
+
+                // TODO: this is the option to try!
+                // add it to the solution / cover it etc.
+                m_solutionOptionNodeIndices.push_back(optionNodeIndex);
+                for (int nodeIndex = optionNodeIndex + 1; nodeIndex < m_nodes.size() && m_nodes[nodeIndex].itemIndex != -1; ++nodeIndex)
+                {
+                    /*
+                    // don't remove from the 
+                    if (m_nodes[nodeIndex].itemIndex != chosenItemIndex)
+                    {
+                    }
+                    */
+                }
+
+                // TODO: recurse
+
+                // TODO: undo trying it as a solution etc.
+                m_solutionOptionNodeIndices.pop_back();
+            }
+        }
+
+#if 0
+        std::vector<int> optionNodeIndices;
 
             // gather up all the options that cover this item
             optionNodeIndices.clear();
@@ -266,8 +301,7 @@ private:
             // Restore item
             m_items[m_items[chosenItemIndex].leftItemIndex].rightItemIndex = chosenItemIndex;
             m_items[m_items[chosenItemIndex].rightItemIndex].leftItemIndex = chosenItemIndex;
-        }
-
+#endif
         // TODO: keep track of how many things we have tried, and how many things there are to try total and report a percentage!
         // TODO: can this be multi threaded at all? I don't think so...
         // TODO: look at knuth's code. You have a lot of temporary storage!
@@ -346,4 +380,7 @@ REFS:
 * https://www.youtube.com/watch?v=_cR9zDlvP88
 * https://en.wikipedia.org/wiki/Knuth%27s_Algorithm_X
 * https://en.wikipedia.org/wiki/Dancing_Links
+* https://en.wikipedia.org/wiki/Exact_cover
+
+More Algos: https://www-cs-faculty.stanford.edu/~knuth/programs.html
 */
