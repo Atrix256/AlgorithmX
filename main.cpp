@@ -6,9 +6,9 @@
 #include <vector>
 #include <algorithm>
 #include <random>
+#include <chrono>
 
 #define DETERMINISTIC() false
-#define EXHAUSTIVE() true
 
 std::mt19937 GetRNG()
 {
@@ -45,6 +45,7 @@ struct Node
     int itemIndex = -1;
 };
 
+template <bool EXHAUSTIVE>
 class Solver
 {
 public:
@@ -188,16 +189,22 @@ public:
             return;
         }
 
-        #if !EXHAUSTIVE()
-        m_rng = GetRNG();
-        #endif
+        if(EXHAUSTIVE)
+            m_rng = GetRNG();
 
         // Precalculations to help the solver
         SetOptionPointers();
         CountItemOptions();
 
         // Solve!
+        m_start = std::chrono::high_resolution_clock::now();
         SolveInternal();
+
+        // report how long the solve took
+        std::chrono::high_resolution_clock::time_point now = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> timeSpan = std::chrono::duration_cast<std::chrono::duration<double>>(now - m_start);
+        std::string elapsed = MakeDurationString((float)timeSpan.count());
+        printf("Total time = %s\n\n", elapsed.c_str());
     }
 
 private:
@@ -208,7 +215,45 @@ private:
     bool m_error = false;
     std::vector<int> m_solutionOptionNodeIndices;
     std::mt19937 m_rng;
-    bool m_solved = false;
+    int m_solutionsFound = 0;
+    std::chrono::high_resolution_clock::time_point m_start;
+
+    std::string MakeDurationString(float durationInSeconds)
+    {
+        std::string ret;
+
+        static const float c_oneMinute = 60.0f;
+        static const float c_oneHour = c_oneMinute * 60.0f;
+
+        int hours = int(durationInSeconds / c_oneHour);
+        durationInSeconds -= float(hours) * c_oneHour;
+
+        int minutes = int(durationInSeconds / c_oneMinute);
+        durationInSeconds -= float(minutes) * c_oneMinute;
+
+        int seconds = int(durationInSeconds);
+
+        char buffer[1024];
+        if (hours < 10)
+            sprintf_s(buffer, "0%i:", hours);
+        else
+            sprintf_s(buffer, "%i:", hours);
+        ret = buffer;
+
+        if (minutes < 10)
+            sprintf_s(buffer, "0%i:", minutes);
+        else
+            sprintf_s(buffer, "%i:", minutes);
+        ret += buffer;
+
+        if (seconds < 10)
+            sprintf_s(buffer, "0%i", seconds);
+        else
+            sprintf_s(buffer, "%i", seconds);
+        ret += buffer;
+
+        return ret;
+    }
 
     void CoverItem(int itemIndex)
     {
@@ -285,8 +330,14 @@ private:
 
     void PrintSolution()
     {
+        printf("Solution #%i...\n", m_solutionsFound);
+
+        // Show the options in a deterministic order - the same order they were given
+        std::vector<int> solutionOptionNodeIndices = m_solutionOptionNodeIndices;
+        std::sort(solutionOptionNodeIndices.begin(), solutionOptionNodeIndices.end());
+
         // for each option
-        for (int optionNodeIndex : m_solutionOptionNodeIndices)
+        for (int optionNodeIndex : solutionOptionNodeIndices)
         {
             // Get to the start of the option list
             int nodeIndex = optionNodeIndex;
@@ -302,24 +353,24 @@ private:
             }
             printf("\n");
         }
-        printf("\n");
+
+        std::chrono::high_resolution_clock::time_point now = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> timeSpan = std::chrono::duration_cast<std::chrono::duration<double>>(now - m_start);
+        std::string elapsed = MakeDurationString((float)timeSpan.count());
+        printf("%s\n\n", elapsed.c_str());
     }
 
     void SolveInternal()
     {
         // For non exhaustive, return after finding the first solution
-        #if !EXHAUSTIVE()
-        if (m_solved)
+        if (!EXHAUSTIVE && m_solutionsFound > 0)
             return;
-        #endif
 
         // If we've found a solution, print it out
         if (m_items[m_rootItemIndex].rightItemIndex >= m_firstOptionalItem)
         {
+            m_solutionsFound++;
             PrintSolution();
-            #if !EXHAUSTIVE()
-            m_solved = true;
-            #endif
             return;
         }
 
@@ -327,7 +378,7 @@ private:
         // Otherwise, find the item with the lowest option count.
         // Randomizing ties might make for better results.
         int chosenItemIndex = m_items[m_rootItemIndex].rightItemIndex;
-        #if !EXHAUSTIVE()
+        if (!EXHAUSTIVE)
         {
             int itemIndex = m_items[m_rootItemIndex].rightItemIndex;
             int lowestItemIndex = itemIndex;
@@ -347,7 +398,6 @@ private:
 
             chosenItemIndex = lowestItemIndex;
         }
-        #endif
 
         // Mark this item as covered.
         // We aren't sure which of the options we are going to use, but it will be one of the options
@@ -355,16 +405,7 @@ private:
 
         // If we are exhaustive, we can try options top to bottom. Otherwise we will try options in a randomized order.
         {
-            #if EXHAUSTIVE() == false
-            std::vector<int> options;
-            for (int optionNodeIndex = m_nodes[chosenItemIndex].downNodeIndex; optionNodeIndex != chosenItemIndex; optionNodeIndex = m_nodes[optionNodeIndex].downNodeIndex)
-                options.push_back(optionNodeIndex);
-
-            std::shuffle(options.begin(), options.end(), m_rng);
-            for (int optionNodeIndex : options)
-            #else
-            for (int optionNodeIndex = m_nodes[chosenItemIndex].downNodeIndex; optionNodeIndex != chosenItemIndex; optionNodeIndex = m_nodes[optionNodeIndex].downNodeIndex)
-            #endif
+            auto TryOption = [&](int optionNodeIndex)
             {
                 // Add this option onto our solution stack
                 m_solutionOptionNodeIndices.push_back(optionNodeIndex);
@@ -398,6 +439,22 @@ private:
 
                 // remove this option from our solution stack
                 m_solutionOptionNodeIndices.pop_back();
+            };
+
+            if (EXHAUSTIVE)
+            {
+                for (int optionNodeIndex = m_nodes[chosenItemIndex].downNodeIndex; optionNodeIndex != chosenItemIndex; optionNodeIndex = m_nodes[optionNodeIndex].downNodeIndex)
+                    TryOption(optionNodeIndex);
+            }
+            else
+            {
+                std::vector<int> options;
+                for (int optionNodeIndex = m_nodes[chosenItemIndex].downNodeIndex; optionNodeIndex != chosenItemIndex; optionNodeIndex = m_nodes[optionNodeIndex].downNodeIndex)
+                    options.push_back(optionNodeIndex);
+
+                std::shuffle(options.begin(), options.end(), m_rng);
+                for (int optionNodeIndex : options)
+                    TryOption(optionNodeIndex);
             }
         }
 
@@ -454,7 +511,7 @@ int main(int argc, char** argv)
 {
     // From https://www-cs-faculty.stanford.edu/~knuth/programs/dlx1.w
     // 1 Unique Solution: AD, CEF, BG
-    Solver::AddItems("A,B,C,D,E,F,G", 5)
+    Solver<true>::AddItems("A,B,C,D,E,F,G", 5)
         .AddOption("C,E,F")
         .AddOption("A,D,G")
         .AddOption("B,C,F")
@@ -468,9 +525,7 @@ int main(int argc, char** argv)
 
 /*
 TODO:
-- support both "single (first) answer" and "all answers". Two different solve functions if needed.
-- time them and report progress.
-- print solutions with items in alphabetical order?
+- report progress.
 */
 
 /*
