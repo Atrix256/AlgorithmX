@@ -1,6 +1,7 @@
-// Note: indices are used instead of pointers because they don't invalidate when dynamic arrays resize.
+// Indices are used instead of pointers because they don't invalidate when dynamic arrays resize.
 // Knuth also notes that you can use types that are smaller than a pointer type when they are indices.
-// I didn't do things quite as bare metal efficient as Knuth, so check out his code if you want to squeeze out a little more perf!
+// I didn't do things quite as bare metal efficient as Knuth, so check out his code if you want to squeeze out more perf!
+// For instance, his implementation does not use recursive functions, while mine does.
 
 #include <vector>
 #include <algorithm>
@@ -32,10 +33,16 @@ struct Item
 // An option is a sequential list of nodes.
 struct Node
 {
+    // Spacer nodes use upNodeIndex as the index of the previous spacer node, and downNodeIndex as the next spacer node.
+    // Non spacer nodes use these to get to the next option for the current item
     int upNodeIndex = -1;
     int downNodeIndex = -1;
 
-    int itemIndex = -1; // What item it belongs to
+    // What item a node belongs to.
+    // -1 means it is a spacer node.
+    // There is a spacer node before and after every option.
+    // An option is a sequential list of nodes.
+    int itemIndex = -1;
 };
 
 class Solver
@@ -185,7 +192,7 @@ public:
         m_rng = GetRNG();
         #endif
 
-        // Do some setup work to make solving faster and easier
+        // Precalculations to help the solver
         SetOptionPointers();
         CountItemOptions();
 
