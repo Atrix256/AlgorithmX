@@ -2,6 +2,7 @@
 // Knuth also notes that you can use types that are smaller than a pointer type when they are indices.
 // I didn't do things quite as bare metal efficient as Knuth, so check out his code if you want to squeeze out more perf!
 // For instance, his implementation does not use recursive functions, while mine does.
+// It would also be faster to not go through string creation & parsing for things like N rooks!
 
 #include <vector>
 #include <algorithm>
@@ -9,6 +10,8 @@
 #include <chrono>
 
 #define DETERMINISTIC() false
+#define PRINT_SOLUTIONS() false
+#define PRINT_PROGRESS_RATE() 100000000
 
 std::mt19937 GetRNG()
 {
@@ -49,6 +52,40 @@ template <bool EXHAUSTIVE>
 class Solver
 {
 public:
+
+    static Solver AddItems(int count, int firstOptionalItem = -1)
+    {
+        // Add the items. The caller needs to name them later.
+        Solver ret;
+        ret.m_items.resize(count);
+
+        // Add a root node item to the end
+        ret.m_rootItemIndex = (int)ret.m_items.size();
+        ret.m_items.resize(ret.m_items.size() + 1);
+        ret.m_items[ret.m_rootItemIndex].name[0] = 0;
+        if (firstOptionalItem < 0)
+            ret.m_firstOptionalItem = ret.m_rootItemIndex;
+        else
+            ret.m_firstOptionalItem = std::min(ret.m_rootItemIndex, firstOptionalItem);
+
+        // make the doubly linked list of items
+        for (int index = 0; index < (int)ret.m_items.size(); ++index)
+        {
+            ret.m_items[index].leftItemIndex = int((index + ret.m_items.size() - 1) % ret.m_items.size());
+            ret.m_items[index].rightItemIndex = int((index + 1) % ret.m_items.size());
+        }
+
+        // Make a node for each item except the root node
+        ret.m_nodes.resize(ret.m_items.size() - 1);
+        for (int index = 0; index < (int)ret.m_nodes.size(); ++index)
+        {
+            ret.m_nodes[index].upNodeIndex = index;
+            ret.m_nodes[index].downNodeIndex = index;
+            ret.m_nodes[index].itemIndex = index;
+        }
+
+        return ret;
+    }
 
     // Comma seperated list
     static Solver AddItems(const char* itemNames, int firstOptionalItem = -1)
@@ -167,7 +204,10 @@ public:
 
             if (!foundItem)
             {
-                printf("Could not find item in option\n");
+                char buffer[8];
+                memcpy(buffer, start, end - start);
+                buffer[end - start] = 0;
+                printf("Could not find item \"%s\" in option\n", buffer);
                 m_error = true;
                 return *this;
             }
@@ -204,10 +244,9 @@ public:
         std::chrono::high_resolution_clock::time_point now = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> timeSpan = std::chrono::duration_cast<std::chrono::duration<double>>(now - m_start);
         std::string elapsed = MakeDurationString((float)timeSpan.count());
-        printf("Total time = %s\n\n", elapsed.c_str());
+        printf("%zu solutions found in %s\n\n", m_solutionsFound, elapsed.c_str());
     }
 
-private:
     std::vector<Item> m_items;
     std::vector<Node> m_nodes;
     int m_rootItemIndex = -1;
@@ -215,9 +254,11 @@ private:
     bool m_error = false;
     std::vector<int> m_solutionOptionNodeIndices;
     std::mt19937 m_rng;
-    int m_solutionsFound = 0;
+    size_t m_solutionsFound = 0;
     std::chrono::high_resolution_clock::time_point m_start;
+    size_t m_attempts = 0;
 
+private:
     std::string MakeDurationString(float durationInSeconds)
     {
         std::string ret;
@@ -232,6 +273,9 @@ private:
         durationInSeconds -= float(minutes) * c_oneMinute;
 
         int seconds = int(durationInSeconds);
+
+        durationInSeconds -= float(seconds);
+        int milliseconds = int(durationInSeconds * 1000.0f);
 
         char buffer[1024];
         if (hours < 10)
@@ -250,6 +294,14 @@ private:
             sprintf_s(buffer, "0%i", seconds);
         else
             sprintf_s(buffer, "%i", seconds);
+        ret += buffer;
+
+        if (milliseconds < 10)
+            sprintf_s(buffer, ".00%i", milliseconds);
+        else if (milliseconds < 100)
+            sprintf_s(buffer, ".0%i", milliseconds);
+        else
+            sprintf_s(buffer, ".%i", milliseconds);
         ret += buffer;
 
         return ret;
@@ -330,7 +382,8 @@ private:
 
     void PrintSolution()
     {
-        printf("Solution #%i...\n", m_solutionsFound);
+        #if PRINT_SOLUTIONS()
+        printf("Solution #%zu...\n", m_solutionsFound);
 
         // Show the options in a deterministic order - the same order they were given
         std::vector<int> solutionOptionNodeIndices = m_solutionOptionNodeIndices;
@@ -358,6 +411,18 @@ private:
         std::chrono::duration<double> timeSpan = std::chrono::duration_cast<std::chrono::duration<double>>(now - m_start);
         std::string elapsed = MakeDurationString((float)timeSpan.count());
         printf("%s\n\n", elapsed.c_str());
+        #endif
+    }
+
+    void PrintProgress()
+    {
+        std::chrono::high_resolution_clock::time_point now = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> timeSpan = std::chrono::duration_cast<std::chrono::duration<double>>(now - m_start);
+        std::string elapsed = MakeDurationString((float)timeSpan.count());
+        printf("[%s] %zu solutions. Pos: ", elapsed.c_str(), m_solutionsFound);
+        for (int index : m_solutionOptionNodeIndices)
+            printf("%i ", index);
+        printf("\n");
     }
 
     void SolveInternal()
@@ -407,6 +472,10 @@ private:
         {
             auto TryOption = [&](int optionNodeIndex)
             {
+                m_attempts++;
+                if ((m_attempts % PRINT_PROGRESS_RATE()) == 0)
+                    PrintProgress();
+
                 // Add this option onto our solution stack
                 m_solutionOptionNodeIndices.push_back(optionNodeIndex);
 
@@ -507,8 +576,85 @@ private:
     }
 };
 
-int main(int argc, char** argv)
+template <bool EXHAUSTIVE>
+void NRooks(int boardSize)
 {
+    printf("===========================================\n");
+    printf(__FUNCTION__ "(%i)\n", boardSize);
+    printf("===========================================\n");
+
+    // Set up the items
+    auto solver = Solver<EXHAUSTIVE>::AddItems(boardSize + boardSize);
+    {
+        for (int i = 0; i < boardSize; ++i)
+        {
+            sprintf_s(solver.m_items[i].name, "X%i", i);
+            sprintf_s(solver.m_items[boardSize + i].name, "Y%i", i);
+        }
+    }
+
+    // Set up the options
+    char option[256];
+    for (int i = 0; i < boardSize * boardSize; ++i)
+    {
+        int x = i % boardSize;
+        int y = i / boardSize;
+        sprintf_s(option, "X%i,Y%i", x, y);
+        solver.AddOption(option);
+    }
+
+    // Solve
+    solver.Solve();
+}
+
+template <bool EXHAUSTIVE>
+void NQueens(int boardSize)
+{
+    printf("===========================================\n");
+    printf(__FUNCTION__ "(%i)\n", boardSize);
+    printf("===========================================\n");
+
+    // Set up the items
+    auto solver = Solver<EXHAUSTIVE>::AddItems(boardSize + boardSize + (2 * boardSize - 1) + (2 * boardSize - 1), 2 * boardSize);
+    {
+        for (int i = 0; i < boardSize; ++i)
+        {
+            sprintf_s(solver.m_items[i].name, "X%i", i);
+            sprintf_s(solver.m_items[boardSize + i].name, "Y%i", i);
+        }
+
+        for (int i = 0; i < 2 * boardSize - 1; ++i)
+        {
+            sprintf_s(solver.m_items[2 * boardSize + i].name, "DR%i", i);
+            sprintf_s(solver.m_items[2 * boardSize + (2 * boardSize - 1) + i].name, "DL%i", i);
+        }
+    }
+
+    // Set up the options
+    char option[256];
+    for (int i = 0; i < boardSize * boardSize; ++i)
+    {
+        int x = i % boardSize;
+        int y = i / boardSize;
+        int dr = x + y;
+        int dl = (boardSize - x - 1) + y;
+        sprintf_s(option, "X%i,Y%i,DR%i,DL%i", x, y, dr, dl);
+        solver.AddOption(option);
+
+        // TODO: diagonals!
+    }
+
+    // Solve
+    solver.Solve();
+}
+
+
+void BasicExamples()
+{
+    printf("===========================================\n");
+    printf(__FUNCTION__ "\n");
+    printf("===========================================\n");
+
     // From https://www-cs-faculty.stanford.edu/~knuth/programs/dlx1.w
     // 1 Unique Solution: AD, CEF, BG
     Solver<true>::AddItems("A,B,C,D,E,F,G", 5)
@@ -542,16 +688,31 @@ int main(int argc, char** argv)
         .AddOption("D,E")     // 6
         .AddOption("A,C,E,F") // 7
         .Solve();
+}
+
+int main(int argc, char** argv)
+{
+    //BasicExamples();
+
+    //NRooks<true>(8);
+
+    //NQueens<true>(8);
 
     return 0;
 }
 
 /*
 TODO:
-- report progress.
 - pentominos
 - sudoku
-- N queens (and N rooks)
+? is there a way to make N rooks not be full? maybe with an extension.... colors? dunno
+*/
+
+/*
+Blog post:
+* yep, NQueens(8) has 92 solutions! https://en.wikipedia.org/wiki/Eight_queens_puzzle
+* this is so insantely fast. show nrooks(12) or something.
+
 */
 
 /*
@@ -578,4 +739,7 @@ REFS:
 * https://en.wikipedia.org/wiki/Exact_cover
 
 More Algos: https://www-cs-faculty.stanford.edu/~knuth/programs.html
+
+Live coding: https://www.youtube.com/watch?v=IoXDNWhN0aw
+and explanation https://twitter.com/kmett/status/1585133038135975936?s=20&t=0IWdGtwBR-vN1V26eIN68A
 */
