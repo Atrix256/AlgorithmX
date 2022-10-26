@@ -712,22 +712,8 @@ TODO:
 Blog post:
 * yep, NQueens(8) has 92 solutions! https://en.wikipedia.org/wiki/Eight_queens_puzzle
 * this is so insantely fast. show nrooks(12) or something.
+* explain algorithm. explain item vs option. Explain exhaustive vs non exhaustive choices.
 
-*/
-
-/*
-Algorithm description:
-
-! explain item vs option
-
-1) Choose an item.
- * We are doing left to right because we are going exhaustive.
- * Going from fewest to most choices is often better if not going exhaustive apparently.
- * Any way you go about it, so long as you try all items, you won't miss anything.
-2) Remove this item from the list of items. (doesn't need to be undone later!)
-3) For every option that has this item, remove that option from all items. These options are no longer available. One will be chosen as the one covering this item.
-4) We will try each option one by one. Top to bottom is fine for exhausive. Random order is better if not exhausive apparently.
- a) for each item in the current option, except the last item chosen, mark that item as covered.
 */
 
 /*
