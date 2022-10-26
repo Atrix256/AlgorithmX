@@ -520,12 +520,37 @@ int main(int argc, char** argv)
         .AddOption("D,E,G")
         .Solve();
 
+    // From https://en.wikipedia.org/wiki/Exact_cover#Detailed_example
+    // 1 Unique Solution: 14, 356, 27
+    Solver<true>::AddItems("1,2,3,4,5,6,7")
+        .AddOption("1,4,7")   // A
+        .AddOption("1,4")     // B
+        .AddOption("4,5,7")   // C
+        .AddOption("3,5,6")   // D
+        .AddOption("2,3,6,7") // E
+        .AddOption("2,7")     // F
+        .Solve();
+
+    // Exact hitting set, transpose of last example. From https://en.wikipedia.org/wiki/Exact_cover#Exact_hitting_set
+    Solver<true>::AddItems("A,B,C,D,E,F")
+        .AddOption("A,B")     // 1
+        .AddOption("E,F")     // 2
+        .AddOption("D,E")     // 3
+        .AddOption("A,B,C")   // 4
+        .AddOption("C,D")     // 5
+        .AddOption("D,E")     // 6
+        .AddOption("A,C,E,F") // 7
+        .Solve();
+
     return 0;
 }
 
 /*
 TODO:
 - report progress.
+- pentominos
+- sudoku
+- N queens (and N rooks)
 */
 
 /*
