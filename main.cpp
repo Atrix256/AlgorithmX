@@ -706,6 +706,8 @@ TODO:
 - pentominos
 - sudoku
 ? is there a way to make N rooks not be full? maybe with an extension.... colors? dunno
+* move all but the basic examples into their own files, to make this main file less messy
+* make a way to add options by index, so the string building and parsing doesn't need to happen.
 */
 
 /*
