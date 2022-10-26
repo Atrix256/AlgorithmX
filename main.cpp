@@ -532,6 +532,7 @@ int main(int argc, char** argv)
         .Solve();
 
     // Exact hitting set, transpose of last example. From https://en.wikipedia.org/wiki/Exact_cover#Exact_hitting_set
+    // 1 Unique Solution: AB, EF, CD
     Solver<true>::AddItems("A,B,C,D,E,F")
         .AddOption("A,B")     // 1
         .AddOption("E,F")     // 2
