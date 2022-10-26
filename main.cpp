@@ -2,7 +2,6 @@
 // Knuth also notes that you can use types that are smaller than a pointer type when they are indices.
 // I didn't do things quite as bare metal efficient as Knuth, so check out his code if you want to squeeze out more perf!
 // For instance, his implementation does not use recursive functions, while mine does.
-// It would also be faster to not go through string creation & parsing for things like N rooks!
 
 #include <vector>
 #include <algorithm>
@@ -53,6 +52,7 @@ class Solver
 {
 public:
 
+    // Add items without names, that are named later by the caller
     static Solver AddItems(int count, int firstOptionalItem = -1)
     {
         // Add the items. The caller needs to name them later.
@@ -154,6 +154,39 @@ public:
         }
 
         return ret;
+    }
+
+    // A list of integers
+    template<size_t N>
+    Solver& AddOption(const int(& optionItemIndices)[N])
+    {
+        int spacerNodeIndex = (int)m_nodes.size();
+
+        // Add a spacer node
+        {
+            m_nodes.resize(m_nodes.size() + 1 + N);
+            Node& newNode = m_nodes[spacerNodeIndex];
+            newNode.itemIndex = -1;
+        }
+
+        for (int i = 0; i < (int)N; ++i)
+        {
+            int itemIndex = optionItemIndices[i];
+
+            // Make a new node
+            int newNodeIndex = spacerNodeIndex + 1 + i;
+            Node& newNode = m_nodes[newNodeIndex];
+            newNode.itemIndex = itemIndex;
+
+            // hook it into the doubly linked list for the item.  Put it at the end of the list
+            Node& itemNode = m_nodes[itemIndex];
+            newNode.upNodeIndex = itemNode.upNodeIndex;
+            newNode.downNodeIndex = itemIndex;
+            m_nodes[newNode.upNodeIndex].downNodeIndex = newNodeIndex;
+            m_nodes[newNode.downNodeIndex].upNodeIndex = newNodeIndex;
+        }
+
+        return *this;
     }
 
     // Comma seperated list
@@ -576,79 +609,6 @@ private:
     }
 };
 
-template <bool EXHAUSTIVE>
-void NRooks(int boardSize)
-{
-    printf("===========================================\n");
-    printf(__FUNCTION__ "(%i)\n", boardSize);
-    printf("===========================================\n");
-
-    // Set up the items
-    auto solver = Solver<EXHAUSTIVE>::AddItems(boardSize + boardSize);
-    {
-        for (int i = 0; i < boardSize; ++i)
-        {
-            sprintf_s(solver.m_items[i].name, "X%i", i);
-            sprintf_s(solver.m_items[boardSize + i].name, "Y%i", i);
-        }
-    }
-
-    // Set up the options
-    char option[256];
-    for (int i = 0; i < boardSize * boardSize; ++i)
-    {
-        int x = i % boardSize;
-        int y = i / boardSize;
-        sprintf_s(option, "X%i,Y%i", x, y);
-        solver.AddOption(option);
-    }
-
-    // Solve
-    solver.Solve();
-}
-
-template <bool EXHAUSTIVE>
-void NQueens(int boardSize)
-{
-    printf("===========================================\n");
-    printf(__FUNCTION__ "(%i)\n", boardSize);
-    printf("===========================================\n");
-
-    // Set up the items
-    auto solver = Solver<EXHAUSTIVE>::AddItems(boardSize + boardSize + (2 * boardSize - 1) + (2 * boardSize - 1), 2 * boardSize);
-    {
-        for (int i = 0; i < boardSize; ++i)
-        {
-            sprintf_s(solver.m_items[i].name, "X%i", i);
-            sprintf_s(solver.m_items[boardSize + i].name, "Y%i", i);
-        }
-
-        for (int i = 0; i < 2 * boardSize - 1; ++i)
-        {
-            sprintf_s(solver.m_items[2 * boardSize + i].name, "DR%i", i);
-            sprintf_s(solver.m_items[2 * boardSize + (2 * boardSize - 1) + i].name, "DL%i", i);
-        }
-    }
-
-    // Set up the options
-    char option[256];
-    for (int i = 0; i < boardSize * boardSize; ++i)
-    {
-        int x = i % boardSize;
-        int y = i / boardSize;
-        int dr = x + y;
-        int dl = (boardSize - x - 1) + y;
-        sprintf_s(option, "X%i,Y%i,DR%i,DL%i", x, y, dr, dl);
-        solver.AddOption(option);
-
-        // TODO: diagonals!
-    }
-
-    // Solve
-    solver.Solve();
-}
-
-
 void BasicExamples()
 {
     printf("===========================================\n");
@@ -690,13 +650,16 @@ void BasicExamples()
         .Solve();
 }
 
+#include "NRooks.h"
+#include "NQueens.h"
+
 int main(int argc, char** argv)
 {
     //BasicExamples();
 
     //NRooks<true>(8);
 
-    //NQueens<true>(8);
+    NQueens<true>(8);
 
     return 0;
 }
@@ -706,8 +669,7 @@ TODO:
 - pentominos
 - sudoku
 ? is there a way to make N rooks not be full? maybe with an extension.... colors? dunno
-* move all but the basic examples into their own files, to make this main file less messy
-* make a way to add options by index, so the string building and parsing doesn't need to happen.
+* Could try making plus noise, and IGN.
 */
 
 /*

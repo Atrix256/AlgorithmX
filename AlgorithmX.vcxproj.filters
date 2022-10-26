@@ -3,4 +3,8 @@
   <ItemGroup>
     <ClCompile Include="main.cpp" />
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="NRooks.h" />
+    <ClInclude Include="NQueens.h" />
+  </ItemGroup>
 </Project>
