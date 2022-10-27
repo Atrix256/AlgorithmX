@@ -98,7 +98,34 @@ inline void Sudoku()
         solver.AddOption(initialState);
     }
 
-    // TODO: make options for each 0
+    // Make the 9 options for each 0 on the board
+    {
+        int option[4];
+        for (int cell = 0; cell < 9 * 9; ++cell)
+        {
+            if (c_board[cell] != 0)
+                continue;
 
+            option[0] = c_cellsBegin + cell;
+
+            int cellX = cell % 9;
+            int cellY = cell / 9;
+            int blockX = cellX / 3;
+            int blockY = cellY / 3;
+            int block = blockY * 3 + blockX;
+
+            for (int value = 0; value < 9; ++value)
+            {
+                option[1] = c_rowsBegin + (cellY) * 9 + value;
+                option[2] = c_colsBegin + (cellX) * 9 + value;
+                option[3] = c_blocksBegin + (block) * 9 + value;
+                solver.AddOption(option);
+            }
+        }
+    }
+
+    solver.Solve();
+
+    // TODO: callback for solutions. make an ascii print out of the sudoku.
     int ijkl = 0;
 }
