@@ -5,6 +5,7 @@ inline void Sudoku()
     // This is the board to solve.
     // 0 means empty space.
     // From https://en.wikipedia.org/wiki/Sudoku
+    // 30 numbers specified, 51 not specified
     static const int c_board[9 * 9] =
     {
         5,3,0,   0,7,0,   0,0,0,
@@ -66,26 +67,38 @@ inline void Sudoku()
     // This is the only row which has the initial state item covered, so will always be part of the solution.
     {
         std::vector<int> initialState;
-        initialState.push_back(c_initialState);
-        for (size_t i = 0; i < 9 * 9; ++i)
+        for (int cell = 0; cell < 9 * 9; ++cell)
         {
-            if (c_board[i] == 0)
+            if (c_board[cell] == 0)
                 continue;
 
-            //int cellX = i % 9;
-            //int cellY = i / 9;
-            //int blockX = cellX / 3;
-            //int blockY = cellY / 3;
-
             // This cell has something in it
-            //initialState.push_back(c_cellsBegin + i);
+            initialState.push_back(c_cellsBegin + cell);
 
             // This row has this value in it
+            // Note: we subtract 1 from the values, because 0 is invalid.
+            int cellY = cell / 9;
+            initialState.push_back(c_rowsBegin + (cellY) * 9 + c_board[cell] - 1);
 
+            // This column has this value in it
+            int cellX = cell % 9;
+            initialState.push_back(c_colsBegin + (cellX) * 9 + c_board[cell] - 1);
+
+            // This block has this value in it
+            int blockX = cellX / 3;
+            int blockY = cellY / 3;
+            int block = blockY * 3 + blockX;
+            initialState.push_back(c_blocksBegin + (block) * 9 + c_board[cell] - 1);
         }
 
+        // Add that this is the initial state
+        initialState.push_back(c_initialState);
+
+        // Add this option
         solver.AddOption(initialState);
     }
+
+    // TODO: make options for each 0
 
     int ijkl = 0;
 }

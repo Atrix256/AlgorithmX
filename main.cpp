@@ -697,6 +697,7 @@ Blog post:
 * there are extensions to this algorithm, regarding colors and weighting functions. they'll be coming next.
 * mention the thing about NP completeness of exact coverage (https://en.wikipedia.org/wiki/Exact_cover#Noteworthy_examples)
 * explain how to set up the constraints for each problem type
+ * all your constraints are boolean true or falses, so need to think in those terms.
 
 */
 
