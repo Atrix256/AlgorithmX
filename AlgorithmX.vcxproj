@@ -144,6 +144,7 @@
   <ItemGroup>
     <ClInclude Include="NQueens.h" />
     <ClInclude Include="NRooks.h" />
+    <ClInclude Include="Sudoku.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

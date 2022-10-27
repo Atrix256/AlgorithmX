@@ -156,22 +156,21 @@ public:
         return ret;
     }
 
-    // A list of integers
-    template<size_t N>
-    Solver& AddOption(const int(& optionItemIndices)[N])
+    // integers
+    Solver& AddOption(const int* ints, size_t count)
     {
         int spacerNodeIndex = (int)m_nodes.size();
 
         // Add a spacer node
         {
-            m_nodes.resize(m_nodes.size() + 1 + N);
+            m_nodes.resize(m_nodes.size() + 1 + count);
             Node& newNode = m_nodes[spacerNodeIndex];
             newNode.itemIndex = -1;
         }
 
-        for (int i = 0; i < (int)N; ++i)
+        for (int i = 0; i < (int)count; ++i)
         {
-            int itemIndex = optionItemIndices[i];
+            int itemIndex = ints[i];
 
             // Make a new node
             int newNodeIndex = spacerNodeIndex + 1 + i;
@@ -187,6 +186,19 @@ public:
         }
 
         return *this;
+    }
+
+    // A vector of ints
+    Solver& AddOption(const std::vector<int>& optionItemIndices)
+    {
+        return AddOption(optionItemIndices.data(), optionItemIndices.size());
+    }
+
+    // A list of integers
+    template<size_t N>
+    Solver& AddOption(const int(& optionItemIndices)[N])
+    {
+        return AddOption(optionItemIndices, N);
     }
 
     // Comma seperated list
@@ -652,6 +664,7 @@ void BasicExamples()
 
 #include "NRooks.h"
 #include "NQueens.h"
+#include "Sudoku.h"
 
 int main(int argc, char** argv)
 {
@@ -659,7 +672,9 @@ int main(int argc, char** argv)
 
     //NRooks<true>(8);
 
-    NQueens<true>(8);
+    //NQueens<true>(8);
+
+    Sudoku();
 
     return 0;
 }
@@ -668,15 +683,20 @@ int main(int argc, char** argv)
 TODO:
 - pentominos
 - sudoku
-? is there a way to make N rooks not be full? maybe with an extension.... colors? dunno
 * Could try making plus noise, and IGN.
+* make some ascii art output for each type of thing solved
 */
 
 /*
 Blog post:
+* explain algorithm. explain item vs option. Explain exhaustive vs non exhaustive choices.
+ * Algorithm X is just the brute force way of searching basically. Dancing links is more efficient.
+ * the heuristics for "non exhaustive" are special though.
 * yep, NQueens(8) has 92 solutions! https://en.wikipedia.org/wiki/Eight_queens_puzzle
 * this is so insantely fast. show nrooks(12) or something.
-* explain algorithm. explain item vs option. Explain exhaustive vs non exhaustive choices.
+* there are extensions to this algorithm, regarding colors and weighting functions. they'll be coming next.
+* mention the thing about NP completeness of exact coverage (https://en.wikipedia.org/wiki/Exact_cover#Noteworthy_examples)
+* explain how to set up the constraints for each problem type
 
 */
 

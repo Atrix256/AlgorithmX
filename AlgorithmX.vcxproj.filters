@@ -6,5 +6,6 @@
   <ItemGroup>
     <ClInclude Include="NRooks.h" />
     <ClInclude Include="NQueens.h" />
+    <ClInclude Include="Sudoku.h" />
   </ItemGroup>
 </Project>
