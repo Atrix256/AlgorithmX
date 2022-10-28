@@ -693,7 +693,6 @@ TODO:
 - pentominos
 - sudoku - do one with multiple answers?
 * Could try making plus noise, and IGN.
-* Print out queens solutions
 */
 
 /*

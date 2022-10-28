@@ -32,7 +32,7 @@ void NRooks(int boardSize)
     int solutionCount = 0;
     solver.Solve([&] (const auto& solver)
         {
-            if (solutionCount > 5)
+            if (solutionCount >= 5)
                 return;
 
             solutionCount++;
@@ -46,7 +46,7 @@ void NRooks(int boardSize)
                 while (solver.m_nodes[spacerIndex].itemIndex != -1)
                     spacerIndex--;
 
-                int optionIndex = (spacerIndex - (boardSize + boardSize)) / 3;
+                int optionIndex = (spacerIndex - solver.m_rootItemIndex) / 3;
 
                 solution[optionIndex] = 'R';
             }
