@@ -268,6 +268,13 @@ public:
 
     void Solve()
     {
+        auto dummy = [](const auto& solver) {};
+        Solve(dummy);
+    }
+
+    template <typename TSolutionLambdaFN>
+    void Solve(const TSolutionLambdaFN& solutionLambda)
+    {
         if (m_error)
         {
             printf("There was an error, not running solver.\n");
@@ -283,7 +290,7 @@ public:
 
         // Solve!
         m_start = std::chrono::high_resolution_clock::now();
-        SolveInternal();
+        SolveInternal(solutionLambda);
 
         // report how long the solve took
         std::chrono::high_resolution_clock::time_point now = std::chrono::high_resolution_clock::now();
@@ -470,7 +477,8 @@ private:
         printf("\n");
     }
 
-    void SolveInternal()
+    template <typename TSolutionLambdaFN>
+    void SolveInternal(const TSolutionLambdaFN& solutionLambda)
     {
         // For non exhaustive, return after finding the first solution
         if (!EXHAUSTIVE && m_solutionsFound > 0)
@@ -481,6 +489,7 @@ private:
         {
             m_solutionsFound++;
             PrintSolution();
+            solutionLambda(*this);
             return;
         }
 
@@ -537,7 +546,7 @@ private:
                 }
 
                 // Recurse
-                SolveInternal();
+                SolveInternal(solutionLambda);
 
                 // Uncover each item from this option, except the current item
                 for (int nodeIndex = optionNodeIndex + 1; nodeIndex != optionNodeIndex; nodeIndex++)

@@ -8,17 +8,17 @@ inline void Sudoku()
     // 30 numbers specified, 51 not specified
     static const int c_board[9 * 9] =
     {
-        5,3,0,   0,7,0,   0,0,0,
-        6,0,0,   1,9,5,   0,0,0,
-        0,9,8,   0,0,0,   0,6,0,
+        5,3,0,  0,7,0,  0,0,0,
+        6,0,0,  1,9,5,  0,0,0,
+        0,9,8,  0,0,0,  0,6,0,
 
-        8,0,0,   0,6,0,   0,0,3,
-        4,0,0,   8,0,3,   0,0,1,
-        7,0,0,   0,2,0,   0,0,6,
+        8,0,0,  0,6,0,  0,0,3,
+        4,0,0,  8,0,3,  0,0,1,
+        7,0,0,  0,2,0,  0,0,6,
 
-        0,6,0,   0,0,0,   2,8,0,
-        0,0,0,   4,1,9,   0,0,5,
-        0,0,0,   0,8,0,   0,7,9
+        0,6,0,  0,0,0,  2,8,0,
+        0,0,0,  4,1,9,  0,0,5,
+        0,0,0,  0,8,0,  0,7,9
     };
 
     // The number of constraints on a sodoku board is...
@@ -63,8 +63,35 @@ inline void Sudoku()
         sprintf_s(solver.m_items[c_initialState].name, "Init");
     }
 
+    // Make the 9 options for each 0 on the board
+    {
+        int option[4];
+        for (int cell = 0; cell < 9 * 9; ++cell)
+        {
+            if (c_board[cell] != 0)
+                continue;
+
+            option[0] = c_cellsBegin + cell;
+
+            int cellX = cell % 9;
+            int cellY = cell / 9;
+            int blockX = cellX / 3;
+            int blockY = cellY / 3;
+            int block = blockY * 3 + blockX;
+
+            for (int value = 0; value < 9; ++value)
+            {
+                option[1] = c_rowsBegin + (cellY) * 9 + value;
+                option[2] = c_colsBegin + (cellX) * 9 + value;
+                option[3] = c_blocksBegin + (block) * 9 + value;
+                solver.AddOption(option);
+            }
+        }
+    }
+
     // Make the initial state option
     // This is the only row which has the initial state item covered, so will always be part of the solution.
+    int initialStateOptionNodeIndex = 1 + (int)solver.m_nodes.size();
     {
         std::vector<int> initialState;
         for (int cell = 0; cell < 9 * 9; ++cell)
@@ -98,34 +125,46 @@ inline void Sudoku()
         solver.AddOption(initialState);
     }
 
-    // Make the 9 options for each 0 on the board
+    int solutionCount = 0;
+    std::vector<int> solvedBoard(81);
+    for (int cell = 0; cell < 81; ++cell)
     {
-        int option[4];
-        for (int cell = 0; cell < 9 * 9; ++cell)
-        {
-            if (c_board[cell] != 0)
-                continue;
-
-            option[0] = c_cellsBegin + cell;
-
-            int cellX = cell % 9;
-            int cellY = cell / 9;
-            int blockX = cellX / 3;
-            int blockY = cellY / 3;
-            int block = blockY * 3 + blockX;
-
-            for (int value = 0; value < 9; ++value)
-            {
-                option[1] = c_rowsBegin + (cellY) * 9 + value;
-                option[2] = c_colsBegin + (cellX) * 9 + value;
-                option[3] = c_blocksBegin + (block) * 9 + value;
-                solver.AddOption(option);
-            }
-        }
+        if (c_board[cell] != 0)
+            solvedBoard[cell] = c_board[cell];
     }
+    solver.Solve(
+        [&] (const auto& solver)
+        {
+            solutionCount++;
+            printf("Solution #%i...", solutionCount);
 
-    solver.Solve();
+            for (int optionIndex : solver.m_solutionOptionNodeIndices)
+            {
+                if (optionIndex == initialStateOptionNodeIndex)
+                    continue;
 
-    // TODO: callback for solutions. make an ascii print out of the sudoku.
-    int ijkl = 0;
+                // TODO: how to get the board index and value for this option?
+                /*
+                int spacerNode = solver.m_rootItemIndex + 5 * cell;
+                int itemIndex = solver.m_nodes[spacerNode + 2].itemIndex;
+                int cellY = cell / 9;
+                int value = itemIndex - (c_rowsBegin + (cellY) * 9);
+                */
+            }
+
+            for (int cell = 0; cell < 81; ++cell)
+            {
+                if (cell > 0 && cell % 27 == 0)
+                    printf("\n\n");
+                else if (cell % 9 == 0)
+                    printf("\n");
+                else if (cell % 3 == 0)
+                    printf(" ");
+
+                printf("%i ", c_board[cell]);
+            }
+
+            printf("\n\n");
+        }
+    );
 }
