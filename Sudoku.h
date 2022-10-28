@@ -125,6 +125,7 @@ inline void Sudoku()
         solver.AddOption(initialState);
     }
 
+    // Solve and print out the solution
     int solutionCount = 0;
     std::vector<int> solvedBoard(81);
     for (int cell = 0; cell < 81; ++cell)
@@ -143,13 +144,19 @@ inline void Sudoku()
                 if (optionIndex == initialStateOptionNodeIndex)
                     continue;
 
-                // TODO: how to get the board index and value for this option?
-                /*
-                int spacerNode = solver.m_rootItemIndex + 5 * cell;
-                int itemIndex = solver.m_nodes[spacerNode + 2].itemIndex;
+                // Find the spacer node for this option
+                int spacerNode = optionIndex;
+                while (solver.m_nodes[spacerNode].itemIndex != -1)
+                    spacerNode--;
+
+                // get the cell and value
+                int cell = solver.m_nodes[spacerNode + 1].itemIndex - c_cellsBegin;
                 int cellY = cell / 9;
-                int value = itemIndex - (c_rowsBegin + (cellY) * 9);
-                */
+                int itemIndex = solver.m_nodes[spacerNode + 2].itemIndex;
+                int value = 1 + itemIndex - (c_rowsBegin + (cellY) * 9);
+
+                // set it
+                solvedBoard[cell] = value;
             }
 
             for (int cell = 0; cell < 81; ++cell)
@@ -161,7 +168,7 @@ inline void Sudoku()
                 else if (cell % 3 == 0)
                     printf(" ");
 
-                printf("%i ", c_board[cell]);
+                printf("%i ", solvedBoard[cell]);
             }
 
             printf("\n\n");

@@ -296,7 +296,7 @@ public:
         std::chrono::high_resolution_clock::time_point now = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> timeSpan = std::chrono::duration_cast<std::chrono::duration<double>>(now - m_start);
         std::string elapsed = MakeDurationString((float)timeSpan.count());
-        printf("%zu solutions found in %s\n\n", m_solutionsFound, elapsed.c_str());
+        printf("%zu solutions found (%zu options tried) in %s\n\n", m_solutionsFound, m_attempts, elapsed.c_str());
     }
 
     std::vector<Item> m_items;
