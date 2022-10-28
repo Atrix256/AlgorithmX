@@ -674,6 +674,7 @@ void BasicExamples()
 #include "NRooks.h"
 #include "NQueens.h"
 #include "Sudoku.h"
+#include "PlusNoise.h"
 
 int main(int argc, char** argv)
 {
@@ -685,14 +686,15 @@ int main(int argc, char** argv)
 
     Sudoku();
 
+    PlusNoise();
+
     return 0;
 }
 
 /*
 TODO:
-- pentominos
-- sudoku - do one with multiple answers?
-* Could try making plus noise, and IGN.
+- pentominos (mini)?
+* IGN
 */
 
 /*
@@ -706,7 +708,16 @@ Blog post:
 * mention the thing about NP completeness of exact coverage (https://en.wikipedia.org/wiki/Exact_cover#Noteworthy_examples)
 * explain how to set up the constraints for each problem type
  * all your constraints are boolean true or falses, so need to think in those terms.
+* plus noise: i tried making a 3x3 that satisfied the + constraints. No solutions! so switched to 5x5 and it found solutions.
+ * Plus noise: https://blog.demofox.org/2022/02/01/two-low-discrepancy-grids-plus-shaped-sampling-ldg-and-r2-ldg/
+ * solution #2 matches our formula.
+ * Solution #1 is (x - 3y) % 5, or  (x + 2y) % 5.
+ * The other solutions are just "changing symbols". like swapping all 2s and 3s.
+ * Is that true? 240 solutions total. half are +3y, half are +2y so that's 120 solutions.
+ * Yep, the number of ways to arrange 5 things is 5! = 120.  http://hyperphysics.phy-astr.gsu.edu/hbase/Math/permut.html
+ * Wrapping tile of 5x5 values
 
+ Then: color, multicolor, etc.
 */
 
 /*
