@@ -679,9 +679,9 @@ int main(int argc, char** argv)
 {
     //BasicExamples();
 
-    //NRooks<true>(8);
+    NRooks<true>(8);
 
-    //NQueens<true>(8);
+    NQueens<true>(8);
 
     Sudoku();
 
@@ -691,9 +691,9 @@ int main(int argc, char** argv)
 /*
 TODO:
 - pentominos
-- sudoku
+- sudoku - do one with multiple answers?
 * Could try making plus noise, and IGN.
-* make some ascii art output for each type of thing solved
+* Print out queens solutions
 */
 
 /*

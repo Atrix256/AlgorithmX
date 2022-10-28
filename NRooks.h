@@ -29,5 +29,38 @@ void NRooks(int boardSize)
     }
 
     // Solve
-    solver.Solve();
+    int solutionCount = 0;
+    solver.Solve([&] (const auto& solver)
+        {
+            if (solutionCount > 5)
+                return;
+
+            solutionCount++;
+            printf("Solution #%i...", solutionCount);
+
+            // Fill out the board
+            std::vector<char> solution(boardSize * boardSize, '.');
+            for (int optionIndex : solver.m_solutionOptionNodeIndices)
+            {
+                int spacerIndex = optionIndex;
+                while (solver.m_nodes[spacerIndex].itemIndex != -1)
+                    spacerIndex--;
+
+                int optionIndex = (spacerIndex - (boardSize + boardSize)) / 3;
+
+                solution[optionIndex] = 'R';
+            }
+
+            // print the board
+            for (int cell = 0; cell < boardSize * boardSize; ++cell)
+            {
+                if (cell % boardSize == 0)
+                    printf("\n");
+
+                printf("%c", solution[cell]);
+            }
+
+            printf("\n\n");
+        }
+    );
 }

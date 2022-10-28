@@ -2,6 +2,10 @@
 
 inline void Sudoku()
 {
+    printf("===========================================\n");
+    printf(__FUNCTION__ "\n");
+    printf("===========================================\n");
+
     // This is the board to solve.
     // 0 means empty space.
     // From https://en.wikipedia.org/wiki/Sudoku
