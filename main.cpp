@@ -46,7 +46,23 @@ struct Node
     int itemIndex = -1;
 };
 
-template <bool EXHAUSTIVE>
+struct SScopedRecursionCounter
+{
+    SScopedRecursionCounter()
+    {
+        s_recursionLevel++;
+    }
+
+    ~SScopedRecursionCounter()
+    {
+        s_recursionLevel--;
+    }
+
+    static int s_recursionLevel;
+};
+int SScopedRecursionCounter::s_recursionLevel = -1;
+
+template <bool EXHAUSTIVE, bool SHOW_ALL_ATTEMPTS = false>
 class Solver
 {
 public:
@@ -158,6 +174,7 @@ public:
     // integers
     Solver& AddOption(const int* ints, size_t count)
     {
+        m_optionCount++;
         int spacerNodeIndex = (int)m_nodes.size();
 
         // Add a spacer node
@@ -205,6 +222,8 @@ public:
     {
         if (m_error || !items || !items[0])
             return *this;
+
+        m_optionCount++;
 
         // Add a spacer node
         {
@@ -295,7 +314,7 @@ public:
         std::chrono::high_resolution_clock::time_point now = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> timeSpan = std::chrono::duration_cast<std::chrono::duration<double>>(now - m_start);
         std::string elapsed = MakeDurationString((float)timeSpan.count());
-        printf("%zu solutions found (%zu options tried) in %s\n\n", m_solutionsFound, m_attempts, elapsed.c_str());
+        printf("%zu solutions found (%zu options tried, max recursion depth %i) in %s\n\n", m_solutionsFound, m_attempts, m_maxRecursionDepth, elapsed.c_str());
     }
 
     std::vector<Item> m_items;
@@ -308,6 +327,8 @@ public:
     size_t m_solutionsFound = 0;
     std::chrono::high_resolution_clock::time_point m_start;
     size_t m_attempts = 0;
+    int m_maxRecursionDepth = 0;
+    int m_optionCount = 0;
 
     void PrintSolution() const
     {
@@ -477,6 +498,9 @@ private:
     template <typename TSolutionLambdaFN>
     void SolveInternal(const TSolutionLambdaFN& solutionLambda)
     {
+        SScopedRecursionCounter recursionCounter;
+        m_maxRecursionDepth = std::max(m_maxRecursionDepth, recursionCounter.s_recursionLevel);
+
         // For non exhaustive, return after finding the first solution
         if (!EXHAUSTIVE && m_solutionsFound > 0)
             return;
@@ -519,17 +543,54 @@ private:
 
         // If we are exhaustive, we can try options top to bottom. Otherwise we will try options in a randomized order.
         {
-            auto TryOption = [&](int optionNodeIndex)
+            auto TryOption = [&](int tryOptionNodeIndex)
             {
+                if (SHOW_ALL_ATTEMPTS)
+                {
+                    int spacerNodeIndex = tryOptionNodeIndex;
+                    while (m_nodes[spacerNodeIndex].itemIndex != -1)
+                        spacerNodeIndex--;
+
+                    int optionIndex = 0;
+                    int optionNodeIndex = spacerNodeIndex;
+                    while (optionNodeIndex != m_rootItemIndex)
+                    {
+                        optionIndex++;
+                        optionNodeIndex = m_nodes[optionNodeIndex].upNodeIndex;
+                    }
+
+                    printf("\n");
+                    for (int i = 0; i < recursionCounter.s_recursionLevel; ++i)
+                        printf("  ");
+                    printf("Trying option %i (for item %i aka %s)\n", optionIndex, chosenItemIndex, m_items[chosenItemIndex].name);
+
+                    // Show the names of the items in this option
+                    for (int i = 0; i < recursionCounter.s_recursionLevel; ++i)
+                        printf("  ");
+                    int optionItemNodeIndex = spacerNodeIndex + 1;
+                    while (optionItemNodeIndex != spacerNodeIndex)
+                    {
+                        if (m_nodes[optionItemNodeIndex].itemIndex == -1)
+                        {
+                            optionItemNodeIndex = m_nodes[optionItemNodeIndex].upNodeIndex;
+                            continue;
+                        }
+
+                        printf("%s ", m_items[m_nodes[optionItemNodeIndex].itemIndex].name);
+                        optionItemNodeIndex++;
+                    }
+                    printf("\n");
+                }
+
                 m_attempts++;
                 if ((m_attempts % PRINT_PROGRESS_RATE()) == 0)
                     PrintProgress();
 
                 // Add this option onto our solution stack
-                m_solutionOptionNodeIndices.push_back(optionNodeIndex);
+                m_solutionOptionNodeIndices.push_back(tryOptionNodeIndex);
 
                 // Cover each item from this option, except the current item
-                for (int nodeIndex = optionNodeIndex + 1; nodeIndex != optionNodeIndex; nodeIndex++)
+                for (int nodeIndex = tryOptionNodeIndex + 1; nodeIndex != tryOptionNodeIndex; nodeIndex++)
                 {
                     if (m_nodes[nodeIndex].itemIndex == -1)
                     {
@@ -544,7 +605,7 @@ private:
                 SolveInternal(solutionLambda);
 
                 // Uncover each item from this option, except the current item
-                for (int nodeIndex = optionNodeIndex + 1; nodeIndex != optionNodeIndex; nodeIndex++)
+                for (int nodeIndex = tryOptionNodeIndex + 1; nodeIndex != tryOptionNodeIndex; nodeIndex++)
                 {
                     if (m_nodes[nodeIndex].itemIndex == -1)
                     {

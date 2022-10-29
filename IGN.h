@@ -25,7 +25,7 @@ inline void IGN()
     const int c_numItems = c_blocksBegin + 729;
 
     // Create the solver
-    auto solver = Solver<true>::AddItems(c_numItems);
+    auto solver = Solver<true, true>::AddItems(c_numItems);
 
     // Name the items
     {
@@ -35,7 +35,7 @@ inline void IGN()
             int y = i / 9;
 
             // Cell(x,y) has an item or not
-            sprintf_s(solver.m_items[c_cellsBegin + i].name, "Cell%i%i", x, y);
+            sprintf_s(solver.m_items[c_cellsBegin + i].name, "Cel%i_%i", x, y);
 
             // Row(x) has item y or not
             sprintf_s(solver.m_items[c_rowsBegin + i].name, "Row%i_%i", x, y);
@@ -92,6 +92,11 @@ inline void IGN()
                     int offsetY = (offset / 3) - 1;
                     option[3 + offset] = BlockItemIndex(cell, offsetX, offsetY, value);
                 }
+
+                // For debugging
+                //char* optionNames[12];
+                //for (int i = 0; i < 12; ++i)
+                    //optionNames[i] = solver.m_items[option[i]].name;
 
                 solver.AddOption(option);
             }

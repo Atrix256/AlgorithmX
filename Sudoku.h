@@ -51,7 +51,7 @@ inline void Sudoku()
             int y = i / 9;
 
             // Cell(x,y) has an item or not
-            sprintf_s(solver.m_items[c_cellsBegin + i].name, "Cell%i%i", x, y);
+            sprintf_s(solver.m_items[c_cellsBegin + i].name, "Cel%i_%i", x, y);
 
             // Row(x) has item y or not
             sprintf_s(solver.m_items[c_rowsBegin + i].name, "Row%i_%i", x, y);
