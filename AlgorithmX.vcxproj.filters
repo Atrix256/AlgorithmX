@@ -8,5 +8,6 @@
     <ClInclude Include="NQueens.h" />
     <ClInclude Include="Sudoku.h" />
     <ClInclude Include="PlusNoise.h" />
+    <ClInclude Include="IGN.h" />
   </ItemGroup>
 </Project>

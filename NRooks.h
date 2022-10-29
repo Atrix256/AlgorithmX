@@ -32,7 +32,7 @@ void NRooks(int boardSize)
     int solutionCount = 0;
     solver.Solve([&] (const auto& solver)
         {
-            if (solutionCount >= 5)
+            if (solutionCount >= 4)
                 return;
 
             solutionCount++;

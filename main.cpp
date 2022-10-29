@@ -474,7 +474,7 @@ private:
         printf("[%s] %zu solutions. Pos: ", elapsed.c_str(), m_solutionsFound);
         for (int index : m_solutionOptionNodeIndices)
             printf("%i ", index);
-        printf("\n");
+        printf(" (%zu total nodes)\n", m_nodes.size());
     }
 
     template <typename TSolutionLambdaFN>
@@ -675,6 +675,7 @@ void BasicExamples()
 #include "NQueens.h"
 #include "Sudoku.h"
 #include "PlusNoise.h"
+#include "IGN.h"
 
 int main(int argc, char** argv)
 {
@@ -688,14 +689,10 @@ int main(int argc, char** argv)
 
     PlusNoise();
 
+    //IGN();
+
     return 0;
 }
-
-/*
-TODO:
-- pentominos (mini)?
-* IGN
-*/
 
 /*
 Blog post:
@@ -715,7 +712,10 @@ Blog post:
  * The other solutions are just "changing symbols". like swapping all 2s and 3s.
  * Is that true? 240 solutions total. half are +3y, half are +2y so that's 120 solutions.
  * Yep, the number of ways to arrange 5 things is 5! = 120.  http://hyperphysics.phy-astr.gsu.edu/hbase/Math/permut.html
- * Wrapping tile of 5x5 values
+ * Wrapping tile of 5x5 values. This solves em for you, and then you could try to find an equation to describe em.
+ * a 10x10 still only finds 240 solutions! it seems that sizes that aren't multiples of 5 don't have solutions (just tried a couple though)
+* IGN as generalized sudoku -> no solution! took 24 mins but it checked a lot of things.
+* pentominos. how would yo udo it? omitting it
 
  Then: color, multicolor, etc.
 */

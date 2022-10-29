@@ -28,14 +28,14 @@ inline void PlusNoise()
     auto solver = Solver<true>::AddItems(c_numItems);
     {
         for (int i = 0; i < c_numCells; ++i)
-            sprintf_s(solver.m_items[c_beginCells + i].name, "Cell%i%i", i % c_gridSize, i / c_gridSize);
+            sprintf_s(solver.m_items[c_beginCells + i].name, "C%i%i", i % c_gridSize, i / c_gridSize);
 
         for (int i = 0; i < c_numCells * c_numValues; ++i)
         {
             int plusIndex = i / c_numValues;
             int value = i % c_numValues;
 
-            sprintf_s(solver.m_items[c_beginPluses + i].name, "Pls%i_%i", plusIndex, value);
+            sprintf_s(solver.m_items[c_beginPluses + i].name, "P%i%i", plusIndex, value);
         }
     }
 
@@ -80,7 +80,7 @@ inline void PlusNoise()
     int solutionCount = 0;
     solver.Solve([&](const auto& solver)
         {
-            if (solutionCount >= 5)
+            if (solutionCount >= 4)
                 return;
 
             solutionCount++;
