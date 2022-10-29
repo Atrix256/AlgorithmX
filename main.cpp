@@ -9,8 +9,7 @@
 #include <chrono>
 
 #define DETERMINISTIC() false
-#define PRINT_SOLUTIONS() false
-#define PRINT_PROGRESS_RATE() 100000000
+#define PRINT_PROGRESS_RATE() 1000000
 
 std::mt19937 GetRNG()
 {
@@ -310,8 +309,40 @@ public:
     std::chrono::high_resolution_clock::time_point m_start;
     size_t m_attempts = 0;
 
+    void PrintSolution() const
+    {
+        printf("Solution #%zu...\n", m_solutionsFound);
+
+        // Show the options in a deterministic order - the same order they were given
+        std::vector<int> solutionOptionNodeIndices = m_solutionOptionNodeIndices;
+        std::sort(solutionOptionNodeIndices.begin(), solutionOptionNodeIndices.end());
+
+        // for each option
+        for (int optionNodeIndex : solutionOptionNodeIndices)
+        {
+            // Get to the start of the option list
+            int nodeIndex = optionNodeIndex;
+            while (m_nodes[nodeIndex].itemIndex != -1)
+                nodeIndex--;
+
+            // for each item in that option
+            nodeIndex++;
+            while (m_nodes[nodeIndex].itemIndex != -1)
+            {
+                printf("%s ", m_items[m_nodes[nodeIndex].itemIndex].name);
+                nodeIndex++;
+            }
+            printf("\n");
+        }
+
+        std::chrono::high_resolution_clock::time_point now = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> timeSpan = std::chrono::duration_cast<std::chrono::duration<double>>(now - m_start);
+        std::string elapsed = MakeDurationString((float)timeSpan.count());
+        printf("%s\n\n", elapsed.c_str());
+    }
+
 private:
-    std::string MakeDurationString(float durationInSeconds)
+    std::string MakeDurationString(float durationInSeconds) const
     {
         std::string ret;
 
@@ -432,40 +463,6 @@ private:
         }
     }
 
-    void PrintSolution()
-    {
-        #if PRINT_SOLUTIONS()
-        printf("Solution #%zu...\n", m_solutionsFound);
-
-        // Show the options in a deterministic order - the same order they were given
-        std::vector<int> solutionOptionNodeIndices = m_solutionOptionNodeIndices;
-        std::sort(solutionOptionNodeIndices.begin(), solutionOptionNodeIndices.end());
-
-        // for each option
-        for (int optionNodeIndex : solutionOptionNodeIndices)
-        {
-            // Get to the start of the option list
-            int nodeIndex = optionNodeIndex;
-            while (m_nodes[nodeIndex].itemIndex != -1)
-                nodeIndex--;
-
-            // for each item in that option
-            nodeIndex++;
-            while (m_nodes[nodeIndex].itemIndex != -1)
-            {
-                printf("%s ", m_items[m_nodes[nodeIndex].itemIndex].name);
-                nodeIndex++;
-            }
-            printf("\n");
-        }
-
-        std::chrono::high_resolution_clock::time_point now = std::chrono::high_resolution_clock::now();
-        std::chrono::duration<double> timeSpan = std::chrono::duration_cast<std::chrono::duration<double>>(now - m_start);
-        std::string elapsed = MakeDurationString((float)timeSpan.count());
-        printf("%s\n\n", elapsed.c_str());
-        #endif
-    }
-
     void PrintProgress()
     {
         std::chrono::high_resolution_clock::time_point now = std::chrono::high_resolution_clock::now();
@@ -488,16 +485,14 @@ private:
         if (m_items[m_rootItemIndex].rightItemIndex >= m_firstOptionalItem)
         {
             m_solutionsFound++;
-            PrintSolution();
             solutionLambda(*this);
             return;
         }
 
-        // If we are exhaustive, cover the left most item.
-        // Otherwise, find the item with the lowest option count.
-        // Randomizing ties might make for better results.
+        // Try the item with the lowest option count.
+        // Any method for choosing from the remaining items will handle all solutions
+        // but this method can make for a smaller search tree.
         int chosenItemIndex = m_items[m_rootItemIndex].rightItemIndex;
-        if (!EXHAUSTIVE)
         {
             int itemIndex = m_items[m_rootItemIndex].rightItemIndex;
             int lowestItemIndex = itemIndex;
@@ -645,7 +640,7 @@ void BasicExamples()
         .AddOption("A,D")
         .AddOption("B,G")
         .AddOption("D,E,G")
-        .Solve();
+        .Solve([](const auto& solver) { solver.PrintSolution(); });
 
     // From https://en.wikipedia.org/wiki/Exact_cover#Detailed_example
     // 1 Unique Solution: 14, 356, 27
@@ -656,7 +651,7 @@ void BasicExamples()
         .AddOption("3,5,6")   // D
         .AddOption("2,3,6,7") // E
         .AddOption("2,7")     // F
-        .Solve();
+        .Solve([](const auto& solver) { solver.PrintSolution(); });
 
     // Exact hitting set, transpose of last example. From https://en.wikipedia.org/wiki/Exact_cover#Exact_hitting_set
     // 1 Unique Solution: AB, EF, CD
@@ -668,7 +663,7 @@ void BasicExamples()
         .AddOption("C,D")     // 5
         .AddOption("D,E")     // 6
         .AddOption("A,C,E,F") // 7
-        .Solve();
+        .Solve([](const auto& solver) { solver.PrintSolution(); });
 }
 
 #include "NRooks.h"
@@ -679,7 +674,7 @@ void BasicExamples()
 
 int main(int argc, char** argv)
 {
-    //BasicExamples();
+    BasicExamples();
 
     NRooks<true>(8);
 
@@ -689,7 +684,7 @@ int main(int argc, char** argv)
 
     PlusNoise();
 
-    //IGN();
+    IGN();
 
     return 0;
 }
@@ -715,7 +710,13 @@ Blog post:
  * Wrapping tile of 5x5 values. This solves em for you, and then you could try to find an equation to describe em.
  * a 10x10 still only finds 240 solutions! it seems that sizes that aren't multiples of 5 don't have solutions (just tried a couple though)
 * IGN as generalized sudoku -> no solution! took 24 mins but it checked a lot of things.
+ * realized the "choose column with lowest item count" prunes the search tree. now happens in < 1 millisecond.
 * pentominos. how would yo udo it? omitting it
+
+* could probably multi thread this. Thoughts on that?
+ * Find item with the most options.
+ * If it has N you can break that into M threads, where N >= M.
+ * Some options may go a lot faster than others though. More sophisticated, runtime adaptive, work balacing would do better.
 
  Then: color, multicolor, etc.
 */
