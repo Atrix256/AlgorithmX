@@ -791,51 +791,7 @@ int main(int argc, char** argv)
 
     IGN();
 
+    //IGNRelaxed();
+
     return 0;
 }
-
-/*
-Blog post:
-* explain algorithm. explain item vs option. Explain exhaustive vs non exhaustive choices.
- * Algorithm X is just the brute force way of searching basically. Dancing links is more efficient.
- * the heuristics for "non exhaustive" are special though.
-* yep, NQueens(8) has 92 solutions! https://en.wikipedia.org/wiki/Eight_queens_puzzle
-* this is so insantely fast. show nrooks(12) or something.
-* there are extensions to this algorithm, regarding colors and weighting functions. they'll be coming next.
-* mention the thing about NP completeness of exact coverage (https://en.wikipedia.org/wiki/Exact_cover#Noteworthy_examples)
-* explain how to set up the constraints for each problem type
- * all your constraints are boolean true or falses, so need to think in those terms.
-* plus noise: i tried making a 3x3 that satisfied the + constraints. No solutions! so switched to 5x5 and it found solutions.
- * Plus noise: https://blog.demofox.org/2022/02/01/two-low-discrepancy-grids-plus-shaped-sampling-ldg-and-r2-ldg/
- * solution #2 matches our formula.
- * Solution #1 is (x - 3y) % 5, or  (x + 2y) % 5.
- * The other solutions are just "changing symbols". like swapping all 2s and 3s.
- * Is that true? 240 solutions total. half are +3y, half are +2y so that's 120 solutions.
- * Yep, the number of ways to arrange 5 things is 5! = 120.  http://hyperphysics.phy-astr.gsu.edu/hbase/Math/permut.html
- * Wrapping tile of 5x5 values. This solves em for you, and then you could try to find an equation to describe em.
- * a 10x10 still only finds 240 solutions! it seems that sizes that aren't multiples of 5 don't have solutions (just tried a couple though)
-* IGN as generalized sudoku -> no solution! took 24 mins but it checked a lot of things.
- * realized the "choose column with lowest item count" prunes the search tree. now happens in < 1 millisecond.
-* pentominos. how would yo udo it? omitting it
-
-* could probably multi thread this. Thoughts on that?
- * Find item with the most options.
- * If it has N you can break that into M threads, where N >= M.
- * Some options may go a lot faster than others though. More sophisticated, runtime adaptive, work balacing would do better.
-
- Then: color, multicolor, etc.
-*/
-
-/*
-REFS:
-* https://www-cs-faculty.stanford.edu/~knuth/programs.html
-* https://www.youtube.com/watch?v=_cR9zDlvP88
-* https://en.wikipedia.org/wiki/Knuth%27s_Algorithm_X
-* https://en.wikipedia.org/wiki/Dancing_Links
-* https://en.wikipedia.org/wiki/Exact_cover
-
-More Algos: https://www-cs-faculty.stanford.edu/~knuth/programs.html
-
-Live coding: https://www.youtube.com/watch?v=IoXDNWhN0aw
-and explanation https://twitter.com/kmett/status/1585133038135975936?s=20&t=0IWdGtwBR-vN1V26eIN68A
-*/

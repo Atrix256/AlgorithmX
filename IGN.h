@@ -145,3 +145,132 @@ inline void IGN()
         }
     );
 }
+
+inline void IGNRelaxed()
+{
+    printf("===========================================\n");
+    printf(__FUNCTION__ "\n");
+    printf("===========================================\n");
+
+    // This is the same as IGN() but gets rid of the requirement that each row and column
+    // must have all values 1-9.
+
+    // The number of constraints are...
+    // A)  81 for cells   : The 9x9 grid must have a value in each location
+    // B) 729 for blocks  : Every cell has a 3x3 block surrounding it, so 81 blocks, that must each have of the 9 values in them.
+    // A + B + C + D = 810
+    const int c_cellsBegin = 0;
+    const int c_blocksBegin = c_cellsBegin + 81;
+    const int c_numItems = c_blocksBegin + 729;
+
+    // Create the solver
+    auto solver = Solver<true>::AddItems(c_numItems);
+
+    // Name the items
+    {
+        for (int i = 0; i < 81; ++i)
+        {
+            int x = i % 9;
+            int y = i / 9;
+
+            // Cell(x,y) has an item or not
+            sprintf_s(solver.m_items[c_cellsBegin + i].name, "Cel%i_%i", x, y);
+        }
+
+        for (int i = 0; i < 729; ++i)
+        {
+            int block = i / 9;
+            int value = i % 9;
+
+            // Block(block) has item 'value' or not
+            sprintf_s(solver.m_items[c_blocksBegin + i].name, "Blk%i_%i", block, value);
+        }
+    }
+
+    // Make the 9 options for each spot on the board
+    {
+        // A lambda to calculate the item index for adding a value to plus shape
+        auto BlockItemIndex = [=](int cell, int offsetX, int offsetY, int value)
+        {
+            const int c_gridSize = 9;
+            const int c_numValues = 9;
+
+            int x = cell % c_gridSize;
+            int y = cell / c_gridSize;
+            x = (x + offsetX + c_gridSize) % c_gridSize;
+            y = (y + offsetY + c_gridSize) % c_gridSize;
+            int plusIndex = y * c_gridSize + x;
+            return c_blocksBegin + plusIndex * c_numValues + value;
+        };
+
+        int option[10];
+        for (int cell = 0; cell < 9 * 9; ++cell)
+        {
+            option[0] = c_cellsBegin + cell;
+
+            int cellX = cell % 9;
+            int cellY = cell / 9;
+            int blockX = cellX / 3;
+            int blockY = cellY / 3;
+            int block = blockY * 3 + blockX;
+
+            for (int value = 0; value < 9; ++value)
+            {
+                for (int offset = 0; offset < 9; ++offset)
+                {
+                    int offsetX = (offset % 3) - 1;
+                    int offsetY = (offset / 3) - 1;
+                    option[1 + offset] = BlockItemIndex(cell, offsetX, offsetY, value);
+                }
+
+                // For debugging
+                //char* optionNames[12];
+                //for (int i = 0; i < 12; ++i)
+                    //optionNames[i] = solver.m_items[option[i]].name;
+
+                solver.AddOption(option);
+            }
+        }
+    }
+
+    // Solve and print out the solution
+    std::vector<int> matrix(81);
+    solver.Solve(
+        [&](const auto& solver)
+        {
+            if ((solver.m_solutionsFound % 543) != 0)
+                return;
+
+            printf("Solution #%i...", (int)solver.m_solutionsFound);
+
+            // Make the solution
+            for (int optionIndex : solver.m_solutionOptionNodeIndices)
+            {
+                // Find the spacer node for this option
+                int spacerNode = optionIndex;
+                while (solver.m_nodes[spacerNode].itemIndex != -1)
+                    spacerNode--;
+
+                // get the cell and value
+                int cell = solver.m_nodes[spacerNode + 1].itemIndex - c_cellsBegin;
+                int cellY = cell / 9;
+                int value = (solver.m_nodes[spacerNode + 2].itemIndex - c_blocksBegin) % 9;
+                matrix[cell] = value;
+            }
+
+            for (int cell = 0; cell < 81; ++cell)
+            {
+                if (cell > 0 && cell % 27 == 0)
+                    printf("\n\n");
+                else if (cell % 9 == 0)
+                    printf("\n");
+                else if (cell % 3 == 0)
+                    printf(" ");
+
+                printf("%i ", matrix[cell] + 1);
+            }
+
+            printf("\n\n");
+        }
+    );
+}
