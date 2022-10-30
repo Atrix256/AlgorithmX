@@ -25,7 +25,7 @@ inline void IGN()
     const int c_numItems = c_blocksBegin + 729;
 
     // Create the solver
-    auto solver = Solver<true, true>::AddItems(c_numItems);
+    auto solver = Solver<true>::AddItems(c_numItems);
 
     // Name the items
     {
@@ -83,8 +83,8 @@ inline void IGN()
 
             for (int value = 0; value < 9; ++value)
             {
-                option[1] = c_rowsBegin + (cellY) * 9 + value;
-                option[2] = c_colsBegin + (cellX) * 9 + value;
+                option[1] = c_rowsBegin + (value) * 9 + cellY;
+                option[2] = c_colsBegin + (value) * 9 + cellX;
 
                 for (int offset = 0; offset < 9; ++offset)
                 {

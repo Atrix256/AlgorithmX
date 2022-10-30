@@ -417,10 +417,35 @@ private:
         m_items[m_items[itemIndex].leftItemIndex].rightItemIndex = m_items[itemIndex].rightItemIndex;
         m_items[m_items[itemIndex].rightItemIndex].leftItemIndex = m_items[itemIndex].leftItemIndex;
 
+        if (SHOW_ALL_ATTEMPTS)
+        {
+            for (int i = 0; i <= SScopedRecursionCounter::s_recursionLevel; ++i)
+                printf("  ");
+            printf("Covering %s\n", m_items[itemIndex].name);
+        }
+
         // Remove all options of this item from the lists of the other items
         int optionNodeIndex = m_nodes[itemIndex].downNodeIndex;
         while (optionNodeIndex != itemIndex)
         {
+            if (SHOW_ALL_ATTEMPTS)
+            {
+                for (int i = 0; i <= SScopedRecursionCounter::s_recursionLevel + 1; ++i)
+                    printf("  ");
+                int printNodeIndex = optionNodeIndex;
+                while (m_nodes[printNodeIndex].itemIndex != -1)
+                    printNodeIndex--;
+
+                printNodeIndex++;
+                printf("Removing ");
+                while (m_nodes[printNodeIndex].itemIndex != -1)
+                {
+                    printf("%s ", m_items[m_nodes[printNodeIndex].itemIndex].name);
+                    printNodeIndex++;
+                }
+                printf("\n");
+            }
+
             int nodeIndex = optionNodeIndex + 1;
             while (nodeIndex != optionNodeIndex)
             {
@@ -437,6 +462,13 @@ private:
 
                 // Remember that an option has been removed
                 m_items[m_nodes[nodeIndex].itemIndex].optionCount--;
+
+                if (SHOW_ALL_ATTEMPTS && m_items[m_nodes[nodeIndex].itemIndex].optionCount == 0)
+                {
+                    for (int i = 0; i <= SScopedRecursionCounter::s_recursionLevel; ++i)
+                        printf("  ");
+                    printf("Covering %s resulted in %s having no valid options\n", m_items[itemIndex].name, m_items[m_nodes[nodeIndex].itemIndex].name);
+                }
 
                 // go to the next node in the option
                 nodeIndex++;
@@ -535,6 +567,17 @@ private:
             }
 
             chosenItemIndex = lowestItemIndex;
+
+            // If we found an item without any valid options, backtrack.
+            if (lowestItemCount == 0)
+                return;
+        }
+
+        if (SHOW_ALL_ATTEMPTS)
+        {
+            for (int i = 0; i < recursionCounter.s_recursionLevel; ++i)
+                printf("  ");
+            printf("Trying %i options to cover item %s\n", m_items[chosenItemIndex].optionCount, m_items[chosenItemIndex].name);
         }
 
         // Mark this item as covered.
@@ -543,8 +586,12 @@ private:
 
         // If we are exhaustive, we can try options top to bottom. Otherwise we will try options in a randomized order.
         {
+            int currentOptionCount = -1;
+
             auto TryOption = [&](int tryOptionNodeIndex)
             {
+                currentOptionCount++;
+
                 if (SHOW_ALL_ATTEMPTS)
                 {
                     int spacerNodeIndex = tryOptionNodeIndex;
@@ -559,14 +606,11 @@ private:
                         optionNodeIndex = m_nodes[optionNodeIndex].upNodeIndex;
                     }
 
-                    printf("\n");
                     for (int i = 0; i < recursionCounter.s_recursionLevel; ++i)
                         printf("  ");
-                    printf("Trying option %i (for item %i aka %s)\n", optionIndex, chosenItemIndex, m_items[chosenItemIndex].name);
+                    printf("[%i] option %i: ", currentOptionCount, optionIndex);
 
                     // Show the names of the items in this option
-                    for (int i = 0; i < recursionCounter.s_recursionLevel; ++i)
-                        printf("  ");
                     int optionItemNodeIndex = spacerNodeIndex + 1;
                     while (optionItemNodeIndex != spacerNodeIndex)
                     {
